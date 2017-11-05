@@ -61,6 +61,7 @@ type Flux interface {
 
 	Filter(func(T) bool) Flux
 	DistinctUntilChanged() Flux
+	Take(int64) Flux
 
 	Map(func(T) T) Flux
 

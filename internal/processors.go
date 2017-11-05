@@ -1004,3 +1004,71 @@ func DistinctUntilChangedProcessor() cesium.Processor {
 		},
 	}
 }
+
+func TakeProcessor(n int64) cesium.Processor {
+	var subscriber cesium.Subscriber
+	var subscription cesium.Subscription
+	subscriberMux := sync.Mutex{}
+	subscribtionMux := sync.Mutex{}
+
+	taken := int64(0)
+
+	return &processor{
+		subscribe: func(s cesium.Subscriber) cesium.Subscription {
+			sub := &Subscription{
+				CancelFunc: func() {
+					subscribtionMux.Lock()
+					if subscription != nil {
+						subscription.Cancel()
+					}
+					subscribtionMux.Unlock()
+				},
+				RequestFunc: func(n int64) {
+					subscribtionMux.Lock()
+					if subscription != nil {
+						subscription.Request(n)
+					}
+					subscribtionMux.Unlock()
+				},
+			}
+
+			subscriberMux.Lock()
+			subscriber = s
+			subscriber.OnSubscribe(subscription)
+			subscriberMux.Unlock()
+
+			return sub
+		},
+		onSubscribe: func(s cesium.Subscription) {
+			subscribtionMux.Lock()
+			subscription = s
+			subscribtionMux.Unlock()
+		},
+		onNext: func(t cesium.T) {
+			if taken >= n {
+				return
+			}
+			taken++
+			subscriberMux.Lock()
+			subscriber.OnNext(t)
+			if taken >= n {
+				subscriber.OnComplete()
+
+				subscribtionMux.Lock()
+				subscription.Cancel()
+				subscribtionMux.Unlock()
+			}
+			subscriberMux.Unlock()
+		},
+		onComplete: func() {
+			subscriberMux.Lock()
+			subscriber.OnComplete()
+			subscriberMux.Unlock()
+		},
+		onError: func(err error) {
+			subscriberMux.Lock()
+			subscriber.OnError(err)
+			subscriberMux.Unlock()
+		},
+	}
+}

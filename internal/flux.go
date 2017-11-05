@@ -610,3 +610,25 @@ func (f *Flux) DistinctUntilChanged() cesium.Flux {
 
 	return &Flux{onPublish}
 }
+
+func (f *Flux) Take(n int64) cesium.Flux {
+	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
+		p := TakeProcessor(n)
+
+		subscription1 := p.Subscribe(subscriber)
+		subscription2 := f.OnSubscribe(p, scheduler)
+		p.OnSubscribe(subscription2)
+
+		return &Subscription{
+			CancelFunc: func() {
+				subscription1.Cancel()
+				subscription2.Cancel()
+			},
+			RequestFunc: func(n int64) {
+				subscription1.Request(n)
+			},
+		}
+	}
+
+	return &Flux{onPublish}
+}
