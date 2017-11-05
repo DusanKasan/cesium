@@ -241,7 +241,7 @@ func CountProcessor() cesium.Processor {
 
 			subscriberMux.Lock()
 			subscriber = s
-			subscriber.OnSubscribe(subscription)
+			//subscriber.OnSubscribe(subscription)
 			subscriberMux.Unlock()
 
 			return sub
@@ -1046,6 +1046,13 @@ func TakeProcessor(n int64) cesium.Processor {
 		},
 		onNext: func(t cesium.T) {
 			if taken >= n {
+				subscriberMux.Lock()
+				subscriber.OnComplete()
+				subscriberMux.Unlock()
+
+				subscribtionMux.Lock()
+				subscription.Cancel()
+				subscribtionMux.Unlock()
 				return
 			}
 			taken++
@@ -1053,10 +1060,12 @@ func TakeProcessor(n int64) cesium.Processor {
 			subscriber.OnNext(t)
 			if taken >= n {
 				subscriber.OnComplete()
+				subscriberMux.Unlock()
 
 				subscribtionMux.Lock()
 				subscription.Cancel()
 				subscribtionMux.Unlock()
+				return
 			}
 			subscriberMux.Unlock()
 		},

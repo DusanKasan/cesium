@@ -2,7 +2,6 @@ package internal
 
 import (
 	"sync"
-
 	"math"
 
 	"github.com/DusanKasan/cesium"
@@ -18,6 +17,16 @@ const OverflowStrategyIgnore = OverflowStrategy("ignore")
 // FluxJust creates new cesium.Flux that emits the supplied items.
 func FluxJust(items ...cesium.T) cesium.Flux {
 	return FluxFromSlice(items)
+}
+
+// FluxJust creates new cesium.Flux that emits the supplied items.
+func FluxJustOne(item cesium.T) cesium.Flux {
+	return &ScalarFlux{
+		FluxJust(item),
+		func() (cesium.T, bool) {
+			return item, true
+		},
+	}
 }
 
 // FromSlice creates new cesium.Flux that emits items from the supplied slice.
@@ -88,7 +97,7 @@ func FluxFromSlice(items []cesium.T) cesium.Flux {
 			subscriber.OnComplete()
 		})
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				cancellable.Cancel()
 			},
@@ -107,10 +116,12 @@ func FluxFromSlice(items []cesium.T) cesium.Flux {
 				mux.Unlock()
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Flux{OnSubscribe: onPublish}
-
 }
 
 // Range creates new cesium.Flux that emits 64bit integers from start to
@@ -172,7 +183,7 @@ func FluxRange(start int, count int) cesium.Flux {
 			subscriber.OnComplete()
 		})
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				cancellable.Cancel()
 			},
@@ -191,6 +202,9 @@ func FluxRange(start int, count int) cesium.Flux {
 				mux.Unlock()
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Flux{OnSubscribe: onPublish}
@@ -214,13 +228,16 @@ func FluxEmpty() cesium.Flux {
 			}
 		})
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				cancellable.Cancel()
 			},
 			RequestFunc: func(n int64) {
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Flux{OnSubscribe: onPublish}
@@ -245,13 +262,16 @@ func FluxError(err error) cesium.Flux {
 			}
 		})
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				cancellable.Cancel()
 			},
 			RequestFunc: func(n int64) {
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Flux{OnSubscribe: onPublish}
@@ -265,12 +285,15 @@ func FluxNever() cesium.Flux {
 			scheduler = SeparateGoroutineScheduler()
 		}
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 			},
 			RequestFunc: func(n int64) {
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Flux{OnSubscribe: onPublish}
@@ -303,7 +326,7 @@ func FluxDefer(f func() cesium.Publisher) cesium.Flux {
 			subscriptionMux.Unlock()
 		}
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription.Cancel()
 				canc.Cancel()
@@ -312,6 +335,9 @@ func FluxDefer(f func() cesium.Publisher) cesium.Flux {
 				subscription.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Flux{OnSubscribe: onPublish}
@@ -354,7 +380,7 @@ func FluxUsing(resourceSupplier func() cesium.T, sourceSupplier func(cesium.T) c
 			subscription.SetSubscription(s)
 		})
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription.Cancel()
 				canc.Cancel()
@@ -363,6 +389,9 @@ func FluxUsing(resourceSupplier func() cesium.T, sourceSupplier func(cesium.T) c
 				subscription.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Flux{OnSubscribe: onPublish}
@@ -407,7 +436,7 @@ func FluxCreate(f func(cesium.FluxSink), overflowStrategy OverflowStrategy) cesi
 			sinkMux.Unlock()
 		}
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				cancellable.Cancel()
 			},
@@ -415,6 +444,9 @@ func FluxCreate(f func(cesium.FluxSink), overflowStrategy OverflowStrategy) cesi
 				sink.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Flux{OnSubscribe: onPublish}
@@ -463,7 +495,7 @@ func FluxGenerate(f func(cesium.SynchronousSink)) cesium.Flux {
 			}
 		})
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				cancellable.Cancel()
 			},
@@ -482,6 +514,9 @@ func FluxGenerate(f func(cesium.SynchronousSink)) cesium.Flux {
 				requestedMux.Unlock()
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Flux{OnSubscribe: onPublish}

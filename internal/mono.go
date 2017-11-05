@@ -11,10 +11,7 @@ type Mono struct {
 }
 
 func (m *Mono) Subscribe(subscriber cesium.Subscriber) cesium.Subscription {
-	subscription := m.OnSubscribe(subscriber, nil)
-	subscriber.OnSubscribe(subscription)
-
-	return subscription
+	return m.OnSubscribe(subscriber, nil)
 }
 
 func (m *Mono) Filter(filter func(t cesium.T) bool) cesium.Mono {
@@ -25,7 +22,7 @@ func (m *Mono) Filter(filter func(t cesium.T) bool) cesium.Mono {
 		subscription2 := m.OnSubscribe(p, scheduler)
 		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -34,6 +31,9 @@ func (m *Mono) Filter(filter func(t cesium.T) bool) cesium.Mono {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{onPublish}
@@ -47,7 +47,7 @@ func (m *Mono) Map(mapper func(t cesium.T) cesium.T) cesium.Mono {
 		subscription2 := m.OnSubscribe(p, scheduler)
 		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -56,6 +56,9 @@ func (m *Mono) Map(mapper func(t cesium.T) cesium.T) cesium.Mono {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{onPublish}
@@ -69,7 +72,7 @@ func (m *Mono) DoFinally(fn func()) cesium.Mono {
 		subscription2 := m.OnSubscribe(p, scheduler)
 		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -78,6 +81,9 @@ func (m *Mono) DoFinally(fn func()) cesium.Mono {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{onPublish}
@@ -107,9 +113,8 @@ func (m *Mono) Log(logger *log.Logger) cesium.Mono {
 		logger.Printf("Subscribed")
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -118,6 +123,9 @@ func (m *Mono) Log(logger *log.Logger) cesium.Mono {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{onPublish}
@@ -138,7 +146,7 @@ func (m *Mono) DoOnNext(fn func(cesium.T)) cesium.Mono {
 		subscription2 := m.OnSubscribe(p, scheduler)
 		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -147,6 +155,9 @@ func (m *Mono) DoOnNext(fn func(cesium.T)) cesium.Mono {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{onPublish}
@@ -169,7 +180,7 @@ func (m *Mono) DoOnError(fn func(error)) cesium.Mono {
 		subscription2 := m.OnSubscribe(p, scheduler)
 		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -178,6 +189,9 @@ func (m *Mono) DoOnError(fn func(error)) cesium.Mono {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{onPublish}
@@ -200,7 +214,7 @@ func (m *Mono) DoOnCancel(fn func()) cesium.Mono {
 		subscription2 := m.OnSubscribe(p, scheduler)
 		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -209,6 +223,9 @@ func (m *Mono) DoOnCancel(fn func()) cesium.Mono {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{onPublish}
@@ -231,7 +248,7 @@ func (m *Mono) DoOnSubscribe(fn func(cesium.Subscription)) cesium.Mono {
 		subscription2 := m.OnSubscribe(p, scheduler)
 		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -240,6 +257,9 @@ func (m *Mono) DoOnSubscribe(fn func(cesium.Subscription)) cesium.Mono {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{onPublish}
@@ -262,7 +282,7 @@ func (m *Mono) DoOnRequest(fn func(int64)) cesium.Mono {
 		subscription2 := m.OnSubscribe(p, scheduler)
 		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -271,6 +291,9 @@ func (m *Mono) DoOnRequest(fn func(int64)) cesium.Mono {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{onPublish}
@@ -295,7 +318,7 @@ func (m *Mono) DoOnTerminate(fn func()) cesium.Mono {
 		subscription2 := m.OnSubscribe(p, scheduler)
 		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -304,6 +327,9 @@ func (m *Mono) DoOnTerminate(fn func()) cesium.Mono {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{onPublish}
@@ -326,7 +352,7 @@ func (m *Mono) DoOnSuccess(fn func()) cesium.Mono {
 		subscription2 := m.OnSubscribe(p, scheduler)
 		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -335,6 +361,9 @@ func (m *Mono) DoOnSuccess(fn func()) cesium.Mono {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{onPublish}
@@ -348,7 +377,7 @@ func (m *Mono) DoAfterTerminate(fn func()) cesium.Mono {
 		subscription2 := m.OnSubscribe(p, scheduler)
 		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -357,6 +386,9 @@ func (m *Mono) DoAfterTerminate(fn func()) cesium.Mono {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{onPublish}
@@ -375,7 +407,7 @@ func (m *Mono) ConcatWith(publishers ...cesium.Publisher) cesium.Flux {
 		subscription2 := m.OnSubscribe(p, scheduler)
 		p.OnSubscribe(subscription2)
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription1.Cancel()
 				subscription2.Cancel()
@@ -384,6 +416,9 @@ func (m *Mono) ConcatWith(publishers ...cesium.Publisher) cesium.Flux {
 				subscription1.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Flux{onPublish}

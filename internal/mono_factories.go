@@ -45,7 +45,7 @@ func MonoJust(t cesium.T) cesium.Mono {
 			return
 		})
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				cancellable.Cancel()
 			},
@@ -55,6 +55,9 @@ func MonoJust(t cesium.T) cesium.Mono {
 				mux.Unlock()
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{OnSubscribe: onPublish}
@@ -99,7 +102,7 @@ func MonoJustOrEmpty(t cesium.T) cesium.Mono {
 			subscriber.OnComplete()
 		})
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				cancellable.Cancel()
 			},
@@ -109,6 +112,9 @@ func MonoJustOrEmpty(t cesium.T) cesium.Mono {
 				mux.Unlock()
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{OnSubscribe: onPublish}
@@ -153,7 +159,7 @@ func MonoFromCallable(f func() cesium.T) cesium.Mono {
 
 		})
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				cancellable.Cancel()
 			},
@@ -163,6 +169,9 @@ func MonoFromCallable(f func() cesium.T) cesium.Mono {
 				mux.Unlock()
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{OnSubscribe: onPublish}
@@ -186,13 +195,16 @@ func MonoEmpty() cesium.Mono {
 			}
 		})
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				cancellable.Cancel()
 			},
 			RequestFunc: func(n int64) {
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{OnSubscribe: onPublish}
@@ -216,13 +228,16 @@ func MonoError(err error) cesium.Mono {
 			}
 		})
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				cancellable.Cancel()
 			},
 			RequestFunc: func(n int64) {
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{OnSubscribe: onPublish}
@@ -235,12 +250,15 @@ func MonoNever() cesium.Mono {
 			scheduler = SeparateGoroutineScheduler()
 		}
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 			},
 			RequestFunc: func(n int64) {
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{OnSubscribe: onPublish}
@@ -272,7 +290,7 @@ func MonoDefer(f func() cesium.Mono) cesium.Mono {
 			subscriptionMux.Unlock()
 		}
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription.Cancel()
 				canc.Cancel()
@@ -281,6 +299,9 @@ func MonoDefer(f func() cesium.Mono) cesium.Mono {
 				subscription.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{OnSubscribe: onPublish}
@@ -322,7 +343,7 @@ func MonoUsing(resourceSupplier func() cesium.T, sourceSupplier func(cesium.T) c
 			subscriptionMux.Unlock()
 		}
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				subscription.Cancel()
 				canc.Cancel()
@@ -331,6 +352,9 @@ func MonoUsing(resourceSupplier func() cesium.T, sourceSupplier func(cesium.T) c
 				subscription.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{OnSubscribe: onPublish}
@@ -364,7 +388,7 @@ func MonoCreate(f func(cesium.MonoSink)) cesium.Mono {
 			sinkMux.Unlock()
 		}
 
-		return &Subscription{
+		sub := &Subscription{
 			CancelFunc: func() {
 				cancellable.Cancel()
 			},
@@ -372,6 +396,9 @@ func MonoCreate(f func(cesium.MonoSink)) cesium.Mono {
 				sink.Request(n)
 			},
 		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
 	}
 
 	return &Mono{OnSubscribe: onPublish}
