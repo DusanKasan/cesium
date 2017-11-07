@@ -316,3 +316,4 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 ### TODO
 
 - Add schedule periodic and schedule after to schedulers and add ability to insert virtual clock ( this will be useful in tests)
+- Should the operators be "generic" or implementations split inside each flux/mono type?

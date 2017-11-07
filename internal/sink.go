@@ -135,6 +135,8 @@ func (f *FluxSink) RequestedFromDownstream() int64 {
 }
 
 func BufferFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
+	scheduler := SeparateGoroutineScheduler()
+
 	bufferMux := sync.Mutex{}
 	buffer := []cesium.MaterializedEmission{}
 
@@ -151,14 +153,18 @@ func BufferFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
 			requestedMux.Lock()
 			if unbounded {
 				requestedMux.Unlock()
-				s.OnNext(t)
+				scheduler.Schedule(func(c cesium.Canceller) {
+					s.OnNext(t)
+				})
 				return
 			}
 
 			if requested > 0 {
 				requested = requested - 1
 				requestedMux.Unlock()
-				s.OnNext(t)
+				scheduler.Schedule(func(c cesium.Canceller) {
+					s.OnNext(t)
+				})
 				return
 			}
 			requestedMux.Unlock()
@@ -175,21 +181,27 @@ func BufferFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
 			requestedMux.Lock()
 			if unbounded {
 				requestedMux.Unlock()
-				s.OnComplete()
+				scheduler.Schedule(func(c cesium.Canceller) {
+					s.OnComplete()
+				})
 				return
 			}
 
 			if requested > 0 {
 				requested = requested - 1
 				requestedMux.Unlock()
-				s.OnComplete()
+				scheduler.Schedule(func(c cesium.Canceller) {
+					s.OnComplete()
+				})
 				return
 			}
 			requestedMux.Unlock()
 
 			bufferMux.Lock()
 			if len(buffer) == 0 {
-				s.OnComplete()
+				scheduler.Schedule(func(c cesium.Canceller) {
+					s.OnComplete()
+				})
 			} else {
 				buffer = append(buffer, cesium.MaterializedEmission{EventType: "complete"})
 			}
@@ -203,21 +215,27 @@ func BufferFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
 			requestedMux.Lock()
 			if unbounded {
 				requestedMux.Unlock()
-				s.OnError(err)
+				scheduler.Schedule(func(c cesium.Canceller) {
+					s.OnError(err)
+				})
 				return
 			}
 
 			if requested > 0 {
 				requested = requested - 1
 				requestedMux.Unlock()
-				s.OnError(err)
+				scheduler.Schedule(func(c cesium.Canceller) {
+					s.OnError(err)
+				})
 				return
 			}
 			requestedMux.Unlock()
 
 			bufferMux.Lock()
 			if len(buffer) == 0 {
-				s.OnError(err)
+				scheduler.Schedule(func(c cesium.Canceller) {
+					s.OnError(err)
+				})
 			} else {
 				buffer = append(buffer, cesium.MaterializedEmission{EventType: "error", Err: err})
 			}
@@ -245,11 +263,17 @@ func BufferFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
 
 					switch emission.EventType {
 					case "next":
-						s.OnNext(emission.Value)
+						scheduler.Schedule(func(c cesium.Canceller) {
+							s.OnNext(emission.Value)
+						})
 					case "complete":
-						s.OnComplete()
+						scheduler.Schedule(func(c cesium.Canceller) {
+							s.OnComplete()
+						})
 					case "error":
-						s.OnError(emission.Err)
+						scheduler.Schedule(func(c cesium.Canceller) {
+							s.OnError(emission.Err)
+						})
 					}
 				}
 				bufferMux.Unlock()
@@ -266,21 +290,32 @@ func BufferFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
 
 				switch emission.EventType {
 				case "next":
-					s.OnNext(emission.Value)
+					scheduler.Schedule(func(c cesium.Canceller) {
+						s.OnNext(emission.Value)
+					})
 				case "complete":
-					s.OnComplete()
+					scheduler.Schedule(func(c cesium.Canceller) {
+						s.OnComplete()
+					})
 				case "error":
-					s.OnError(emission.Err)
+					scheduler.Schedule(func(c cesium.Canceller) {
+						s.OnError(emission.Err)
+					})
 				}
 			}
 
 			if len(buffer) == 1 {
-				switch buffer[0].EventType {
+				emission := buffer[0]
+				switch emission.EventType {
 				case "complete":
-					s.OnComplete()
+					scheduler.Schedule(func(c cesium.Canceller) {
+						s.OnComplete()
+					})
 					buffer = []cesium.MaterializedEmission{}
 				case "error":
-					s.OnError(buffer[0].Err)
+					scheduler.Schedule(func(c cesium.Canceller) {
+						s.OnError(emission.Err)
+					})
 					buffer = []cesium.MaterializedEmission{}
 				}
 			}

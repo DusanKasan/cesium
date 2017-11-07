@@ -207,7 +207,7 @@ func TestCreateWithBufferUnbounded(t *testing.T) {
 	verifier.
 		Create(publisher).
 		ThenRequest(math.MaxInt64).
-		ExpectNextCount(3).
+		ExpectNext(1, 2, 3).
 		ExpectComplete().
 		Verify(t)
 }

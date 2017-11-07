@@ -18,6 +18,15 @@ type processor struct {
 	subscribe   func(cesium.Subscriber) cesium.Subscription
 }
 
+type conditionalProcessor struct {
+	*processor
+	onNextIf func(cesium.T) bool
+}
+
+func (c *conditionalProcessor) OnNextIf(t cesium.T) bool {
+	return c.onNextIf(t)
+}
+
 func (p *processor) OnNext(t cesium.T) {
 	p.onNext(t)
 }
@@ -44,7 +53,7 @@ func FilterProcessor(f func(cesium.T) bool) cesium.Processor {
 	subscriberMux := sync.Mutex{}
 	subscribtionMux := sync.Mutex{}
 
-	return &processor{
+	p := &processor{
 		subscribe: func(s cesium.Subscriber) cesium.Subscription {
 			sub := &Subscription{
 				CancelFunc: func() {
@@ -57,7 +66,9 @@ func FilterProcessor(f func(cesium.T) bool) cesium.Processor {
 				RequestFunc: func(n int64) {
 					subscribtionMux.Lock()
 					if subscription != nil {
+						subscribtionMux.Unlock()
 						subscription.Request(n)
+						return
 					}
 					subscribtionMux.Unlock()
 				},
@@ -95,6 +106,30 @@ func FilterProcessor(f func(cesium.T) bool) cesium.Processor {
 			subscriberMux.Lock()
 			subscriber.OnError(err)
 			subscriberMux.Unlock()
+		},
+	}
+
+	return &conditionalProcessor{
+		p,
+		func(t cesium.T) bool {
+			b := f(t)
+
+			if b {
+				switch sub := subscriber.(type) {
+				case ConditionalSubscriber:
+					// Propagate the microfusion downstream
+					subscriberMux.Lock()
+					x := sub.OnNextIf(t)
+					subscriberMux.Unlock()
+					return x
+				default:
+					subscriberMux.Lock()
+					subscriber.OnNext(t)
+					subscriberMux.Unlock()
+				}
+			}
+
+			return b
 		},
 	}
 }
@@ -979,7 +1014,7 @@ func DistinctUntilChangedProcessor() cesium.Processor {
 			subscribtionMux.Unlock()
 		},
 		onNext: func(t cesium.T) {
-			if started  && item == t{
+			if started && item == t {
 				subscribtionMux.Lock()
 				subscription.Request(1)
 				subscribtionMux.Unlock()

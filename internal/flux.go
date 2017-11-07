@@ -14,6 +14,11 @@ func (f *Flux) Subscribe(subscriber cesium.Subscriber) cesium.Subscription {
 	return f.OnSubscribe(subscriber, nil)
 }
 
+type ConditionalSubscriber interface {
+	cesium.Subscriber
+	OnNextIf(cesium.T) bool
+}
+
 type ScalarCallable interface {
 	Get() (cesium.T, bool)
 }

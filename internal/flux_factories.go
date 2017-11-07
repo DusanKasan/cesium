@@ -99,84 +99,170 @@ func FluxFromSlice(items []cesium.T) cesium.Flux {
 		requested := int64(0)
 		unbounded := false
 
-		fastPath := func(canceller cesium.Canceller) {
-			for ; index < len(items); index++ {
-				if canceller.IsCancelled() {
-					return
-				}
-
-				subscriber.OnNext(items[index])
-			}
-
-			if canceller.IsCancelled() {
-				return
-			}
-
-			subscriber.OnComplete()
-		}
-
-		cancellable := scheduler.Schedule(func(canceller cesium.Canceller) {
-		sliceFor:
-			for ; index < len(items); index++ {
-				for {
+		switch s := subscriber.(type) {
+		case ConditionalSubscriber:
+			fastPath := func(canceller cesium.Canceller) {
+				for ; index < len(items); index++ {
 					if canceller.IsCancelled() {
 						return
 					}
 
-					mux.Lock()
-					if unbounded {
-						mux.Unlock()
-						fastPath(canceller)
-						return
-					}
-					mux.Unlock()
+					s.OnNextIf(items[index])
+				}
 
-					mux.Lock()
-					if requested > 0 {
-						requested = requested - 1
-						mux.Unlock()
+				if canceller.IsCancelled() {
+					return
+				}
 
+				s.OnComplete()
+			}
+
+			cancellable := scheduler.Schedule(func(canceller cesium.Canceller) {
+			sliceFor:
+				for ; index < len(items); index++ {
+					for {
 						if canceller.IsCancelled() {
 							return
 						}
 
-						subscriber.OnNext(items[index])
-						continue sliceFor
-					} else {
+						mux.Lock()
+						if unbounded {
+							mux.Unlock()
+							fastPath(canceller)
+							return
+						}
 						mux.Unlock()
+
+						mux.Lock()
+						if requested > 0 {
+							requested = requested - 1
+							mux.Unlock()
+
+							if canceller.IsCancelled() {
+								return
+							}
+
+							if !s.OnNextIf(items[index]) {
+								mux.Lock()
+								requested = requested + 1
+								mux.Unlock()
+							}
+							continue sliceFor
+						} else {
+							mux.Unlock()
+						}
 					}
 				}
-			}
 
-			if canceller.IsCancelled() {
-				return
-			}
-
-			subscriber.OnComplete()
-		})
-
-		sub := &Subscription{
-			CancelFunc: func() {
-				cancellable.Cancel()
-			},
-			RequestFunc: func(n int64) {
-				mux.Lock()
-				if unbounded {
-					mux.Unlock()
+				if canceller.IsCancelled() {
 					return
 				}
 
-				if n == math.MaxInt64 {
-					unbounded = true
-				} else {
-					requested = requested + n
-				}
-				mux.Unlock()
-			},
-		}
+				s.OnComplete()
+			})
 
-		subscriber.OnSubscribe(sub)
-		return sub
+			sub := &Subscription{
+				CancelFunc: func() {
+					cancellable.Cancel()
+				},
+				RequestFunc: func(n int64) {
+					mux.Lock()
+					if unbounded {
+						mux.Unlock()
+						return
+					}
+
+					if n == math.MaxInt64 {
+						unbounded = true
+					} else {
+						requested = requested + n
+					}
+					mux.Unlock()
+				},
+			}
+
+			s.OnSubscribe(sub)
+			return sub
+		default:
+			fastPath := func(canceller cesium.Canceller) {
+				for ; index < len(items); index++ {
+					if canceller.IsCancelled() {
+						return
+					}
+
+					subscriber.OnNext(items[index])
+				}
+
+				if canceller.IsCancelled() {
+					return
+				}
+
+				subscriber.OnComplete()
+			}
+
+			cancellable := scheduler.Schedule(func(canceller cesium.Canceller) {
+			sliceFor:
+				for ; index < len(items); index++ {
+					for {
+						if canceller.IsCancelled() {
+							return
+						}
+
+						mux.Lock()
+						if unbounded {
+							mux.Unlock()
+							fastPath(canceller)
+							return
+						}
+						mux.Unlock()
+
+						mux.Lock()
+						if requested > 0 {
+							requested = requested - 1
+							mux.Unlock()
+
+							if canceller.IsCancelled() {
+								return
+							}
+
+							subscriber.OnNext(items[index])
+							continue sliceFor
+						} else {
+							mux.Unlock()
+						}
+					}
+				}
+
+				if canceller.IsCancelled() {
+					return
+				}
+
+				subscriber.OnComplete()
+			})
+
+			sub := &Subscription{
+				CancelFunc: func() {
+					cancellable.Cancel()
+				},
+				RequestFunc: func(n int64) {
+					mux.Lock()
+					if unbounded {
+						mux.Unlock()
+						return
+					}
+
+					if n == math.MaxInt64 {
+						unbounded = true
+					} else {
+						requested = requested + n
+					}
+					mux.Unlock()
+				},
+			}
+
+			subscriber.OnSubscribe(sub)
+			return sub
+		}
 	}
 
 	return &Flux{OnSubscribe: onPublish}
@@ -203,74 +289,153 @@ func FluxRange(start int, count int) cesium.Flux {
 		unbounded := false
 		item := int64(start)
 
-		cancellable := scheduler.Schedule(func(canceller cesium.Canceller) {
-		sliceFor:
-			for ; item < int64(start)+int64(count); item++ {
-				for {
-					if canceller.IsCancelled() {
-						return
-					}
+		switch s := subscriber.(type) {
+		case ConditionalSubscriber:
+			cancellable := scheduler.Schedule(func(canceller cesium.Canceller) {
+			sliceFor:
+				for ; item < int64(start)+int64(count); item++ {
+					for {
+						if canceller.IsCancelled() {
+							return
+						}
 
-					mux.Lock()
-					if unbounded {
+						mux.Lock()
+						if unbounded {
+							mux.Unlock()
+							for ; item < int64(start)+int64(count); item++ {
+								if canceller.IsCancelled() {
+									return
+								}
+
+								s.OnNextIf(item)
+							}
+
+							s.OnComplete()
+							return
+						}
 						mux.Unlock()
-						for ; item < int64(start)+int64(count); item++ {
+
+						mux.Lock()
+						if requested > 0 {
+							requested = requested - 1
+							mux.Unlock()
 							if canceller.IsCancelled() {
 								return
 							}
 
-							subscriber.OnNext(item)
-						}
+							if !s.OnNextIf(item) {
+								mux.Lock()
+								requested = requested + 1
+								mux.Unlock()
+							}
 
-						subscriber.OnComplete()
-						return
-					}
-					mux.Unlock()
-
-					mux.Lock()
-					if requested > 0 {
-						requested = requested - 1
-						mux.Unlock()
-						if canceller.IsCancelled() {
-							return
+							continue sliceFor
+						} else {
+							mux.Unlock()
 						}
-						subscriber.OnNext(item)
-						continue sliceFor
-					} else {
-						mux.Unlock()
 					}
 				}
-			}
 
-			if canceller.IsCancelled() {
-				return
-			}
-
-			subscriber.OnComplete()
-		})
-
-		sub := &Subscription{
-			CancelFunc: func() {
-				cancellable.Cancel()
-			},
-			RequestFunc: func(n int64) {
-				mux.Lock()
-				if unbounded {
-					mux.Unlock()
+				if canceller.IsCancelled() {
 					return
 				}
 
-				if n == math.MaxInt64 {
-					unbounded = true
-				} else {
-					requested = requested + n
+				s.OnComplete()
+			})
+
+			sub := &Subscription{
+				CancelFunc: func() {
+					cancellable.Cancel()
+				},
+				RequestFunc: func(n int64) {
+					mux.Lock()
+					if unbounded {
+						mux.Unlock()
+						return
+					}
+
+					if n == math.MaxInt64 {
+						unbounded = true
+					} else {
+						requested = requested + n
+					}
+					mux.Unlock()
+				},
+			}
+
+			s.OnSubscribe(sub)
+			return sub
+		default:
+			cancellable := scheduler.Schedule(func(canceller cesium.Canceller) {
+			sliceFor:
+				for ; item < int64(start)+int64(count); item++ {
+					for {
+						if canceller.IsCancelled() {
+							return
+						}
+
+						mux.Lock()
+						if unbounded {
+							mux.Unlock()
+							for ; item < int64(start)+int64(count); item++ {
+								if canceller.IsCancelled() {
+									return
+								}
+
+								subscriber.OnNext(item)
+							}
+
+							subscriber.OnComplete()
+							return
+						}
+						mux.Unlock()
+
+						mux.Lock()
+						if requested > 0 {
+							requested = requested - 1
+							mux.Unlock()
+							if canceller.IsCancelled() {
+								return
+							}
+							subscriber.OnNext(item)
+							continue sliceFor
+						} else {
+							mux.Unlock()
+						}
+					}
 				}
-				mux.Unlock()
-			},
+
+				if canceller.IsCancelled() {
+					return
+				}
+
+				subscriber.OnComplete()
+			})
+
+			sub := &Subscription{
+				CancelFunc: func() {
+					cancellable.Cancel()
+				},
+				RequestFunc: func(n int64) {
+					mux.Lock()
+					if unbounded {
+						mux.Unlock()
+						return
+					}
+
+					if n == math.MaxInt64 {
+						unbounded = true
+					} else {
+						requested = requested + n
+					}
+					mux.Unlock()
+				},
+			}
+
+			subscriber.OnSubscribe(sub)
+			return sub
 		}
 
-		subscriber.OnSubscribe(sub)
-		return sub
 	}
 
 	return &Flux{OnSubscribe: onPublish}
@@ -505,61 +670,123 @@ func FluxGenerate(f func(cesium.SynchronousSink)) cesium.Flux {
 		requestedMux := sync.Mutex{}
 		unbounded := false
 
-		cancellable := scheduler.Schedule(func(c cesium.Canceller) {
-			for !c.IsCancelled() {
-				requestedMux.Lock()
-				if requested > 0 || unbounded {
-					requested = requested - 1
-					sink := &SynchronousSink{}
+		switch s := subscriber.(type) {
+		case ConditionalSubscriber:
+			cancellable := scheduler.Schedule(func(c cesium.Canceller) {
+				for !c.IsCancelled() {
+					requestedMux.Lock()
+					if requested > 0 || unbounded {
+						requested = requested - 1
+						sink := &SynchronousSink{}
 
-					f(sink)
+						f(sink)
 
-					if !c.IsCancelled() {
-						emission := sink.GetEmission()
-						switch emission.EventType {
-						case "next":
-							subscriber.OnNext(emission.Value)
-						case "complete":
-							subscriber.OnComplete()
-							requestedMux.Unlock()
-							return
-						case "error":
-							subscriber.OnError(emission.Err)
-							requestedMux.Unlock()
-							return
-						default:
-							subscriber.OnError(cesium.NoEmissionOnSynchronousSinkError)
-							requestedMux.Unlock()
-							return
+						if !c.IsCancelled() {
+							emission := sink.GetEmission()
+							switch emission.EventType {
+							case "next":
+								if !s.OnNextIf(emission.Value) {
+									requested = requested + 1
+								}
+								requestedMux.Unlock()
+							case "complete":
+								s.OnComplete()
+								requestedMux.Unlock()
+								return
+							case "error":
+								s.OnError(emission.Err)
+								requestedMux.Unlock()
+								return
+							default:
+								s.OnError(cesium.NoEmissionOnSynchronousSinkError)
+								requestedMux.Unlock()
+								return
+							}
 						}
 					}
-				}
-				requestedMux.Unlock()
-			}
-		})
-
-		sub := &Subscription{
-			CancelFunc: func() {
-				cancellable.Cancel()
-			},
-			RequestFunc: func(n int64) {
-				requestedMux.Lock()
-				if unbounded {
 					requestedMux.Unlock()
-					return
 				}
+			})
 
-				if n == math.MaxInt64 {
-					unbounded = true
+			sub := &Subscription{
+				CancelFunc: func() {
+					cancellable.Cancel()
+				},
+				RequestFunc: func(n int64) {
+					requestedMux.Lock()
+					if unbounded {
+						requestedMux.Unlock()
+						return
+					}
+
+					if n == math.MaxInt64 {
+						unbounded = true
+					}
+
+					requested = requested + n
+					requestedMux.Unlock()
+				},
+			}
+
+			s.OnSubscribe(sub)
+			return sub
+		default:
+			cancellable := scheduler.Schedule(func(c cesium.Canceller) {
+				for !c.IsCancelled() {
+					requestedMux.Lock()
+					if requested > 0 || unbounded {
+						requested = requested - 1
+						sink := &SynchronousSink{}
+
+						f(sink)
+
+						if !c.IsCancelled() {
+							emission := sink.GetEmission()
+							switch emission.EventType {
+							case "next":
+								subscriber.OnNext(emission.Value)
+							case "complete":
+								subscriber.OnComplete()
+								requestedMux.Unlock()
+								return
+							case "error":
+								subscriber.OnError(emission.Err)
+								requestedMux.Unlock()
+								return
+							default:
+								subscriber.OnError(cesium.NoEmissionOnSynchronousSinkError)
+								requestedMux.Unlock()
+								return
+							}
+						}
+					}
+					requestedMux.Unlock()
 				}
+			})
 
-				requested = requested + n
-				requestedMux.Unlock()
-			},
+			sub := &Subscription{
+				CancelFunc: func() {
+					cancellable.Cancel()
+				},
+				RequestFunc: func(n int64) {
+					requestedMux.Lock()
+					if unbounded {
+						requestedMux.Unlock()
+						return
+					}
+
+					if n == math.MaxInt64 {
+						unbounded = true
+					}
+
+					requested = requested + n
+					requestedMux.Unlock()
+				},
+			}
+
+			subscriber.OnSubscribe(sub)
+			return sub
 		}
-
-		subscriber.OnSubscribe(sub)
-		return sub
 	}
 
 	return &Flux{OnSubscribe: onPublish}
