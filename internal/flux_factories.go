@@ -19,9 +19,9 @@ func FluxJust(items ...cesium.T) cesium.Flux {
 	return FluxFromSlice(items)
 }
 
-// FluxFromCallable is internal way to instantiate a ScalarFlux (a Flux that
+// fluxFromCallable is internal way to instantiate a ScalarFlux (a Flux that
 // behaves like a mono, and offers more efficient implementation of some operators.
-func FluxFromCallable(f func() (cesium.T, bool)) cesium.Flux {
+func fluxFromCallable(f func() (cesium.T, bool)) cesium.Flux {
 	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
 		if scheduler == nil {
 			scheduler = SeparateGoroutineScheduler()
@@ -84,7 +84,7 @@ func FluxFromSlice(items []cesium.T) cesium.Flux {
 	}
 
 	if len(items) == 1 {
-		return FluxFromCallable(func() (cesium.T, bool) {
+		return fluxFromCallable(func() (cesium.T, bool) {
 			return items[0], true
 		})
 	}
@@ -443,7 +443,7 @@ func FluxRange(start int, count int) cesium.Flux {
 
 // Empty creates new cesium.Flux that emits no items and completes normally.
 func FluxEmpty() cesium.Flux {
-	return FluxFromCallable(func() (cesium.T, bool) {
+	return fluxFromCallable(func() (cesium.T, bool) {
 		return nil, false
 	})
 }

@@ -8,107 +8,55 @@ import (
 
 // Just creates new cesium.Mono that emits the supplied item and completes.
 func MonoJust(t cesium.T) cesium.Mono {
-	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
-		if scheduler == nil {
-			scheduler = SeparateGoroutineScheduler()
-		}
-
-		mux := sync.Mutex{}
-		requested := false
-
-		cancellable := scheduler.Schedule(func(canceller cesium.Canceller) {
-			for {
-				if canceller.IsCancelled() {
-					return
-				}
-
-				mux.Lock()
-				if requested {
-					mux.Unlock()
-
-					if canceller.IsCancelled() {
-						return
-					}
-
-					subscriber.OnNext(t)
-					break
-				} else {
-					mux.Unlock()
-				}
-			}
-
-			if canceller.IsCancelled() {
-				return
-			}
-
-			subscriber.OnComplete()
-			return
-		})
-
-		sub := &Subscription{
-			CancelFunc: func() {
-				cancellable.Cancel()
-			},
-			RequestFunc: func(n int64) {
-				mux.Lock()
-				requested = true
-				mux.Unlock()
-			},
-		}
-
-		subscriber.OnSubscribe(sub)
-		return sub
-	}
-
-	return &Mono{OnSubscribe: onPublish}
+	return monoFromCallable(func() (cesium.T, bool) {
+		return t, true
+	})
 }
 
 // JustOrEmpty creates new cesium.Mono that emits the supplied item if it's non-nil
 // and completes, otherwise just completes.
 func MonoJustOrEmpty(t cesium.T) cesium.Mono {
+	return monoFromCallable(func() (cesium.T, bool) {
+		return t, t != nil
+	})
+}
+
+func monoFromCallable(f func() (cesium.T, bool)) cesium.Mono {
+	t, ok := f()
+
 	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
 		if scheduler == nil {
 			scheduler = SeparateGoroutineScheduler()
 		}
 
 		mux := sync.Mutex{}
-		requested := false
-
-		cancellable := scheduler.Schedule(func(canceller cesium.Canceller) {
-			if t != nil {
-				for {
-					if canceller.IsCancelled() {
-						return
-					}
-
-					mux.Lock()
-					if requested {
-						mux.Unlock()
-						if canceller.IsCancelled() {
-							return
-						}
-						subscriber.OnNext(t)
-						break
-					} else {
-						mux.Unlock()
-					}
-				}
-			}
-
-			if canceller.IsCancelled() {
-				return
-			}
-
-			subscriber.OnComplete()
-		})
+		cancelled := false
+		planned := false
+		var cancellable cesium.Cancellable
 
 		sub := &Subscription{
 			CancelFunc: func() {
-				cancellable.Cancel()
+				mux.Lock()
+				cancelled = true
+				if cancellable != nil {
+					cancellable.Cancel()
+				}
+				mux.Unlock()
 			},
 			RequestFunc: func(n int64) {
 				mux.Lock()
-				requested = true
+				if cancelled || planned {
+					mux.Unlock()
+					return
+				}
+
+				cancellable = scheduler.Schedule(func(canceller cesium.Canceller) {
+					if ok {
+						subscriber.OnNext(t)
+					}
+					subscriber.OnComplete()
+				})
+				planned = true
 				mux.Unlock()
 			},
 		}
@@ -117,97 +65,25 @@ func MonoJustOrEmpty(t cesium.T) cesium.Mono {
 		return sub
 	}
 
-	return &Mono{OnSubscribe: onPublish}
+	return &ScalarMono{
+		&Mono{OnSubscribe: onPublish},
+		f,
+	}
 }
 
 // FromCallable creates new cesium.Mono that emits the item returned from the supplied function. If the function
 // returns nil, the returned Mono completes empty.
 func MonoFromCallable(f func() cesium.T) cesium.Mono {
-	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
-		if scheduler == nil {
-			scheduler = SeparateGoroutineScheduler()
-		}
-
-		mux := sync.Mutex{}
-		requested := false
-
-		cancellable := scheduler.Schedule(func(canceller cesium.Canceller) {
-			t := f()
-
-			if t != nil {
-				for {
-					if canceller.IsCancelled() {
-						return
-					}
-
-					mux.Lock()
-					if requested {
-						mux.Unlock()
-						subscriber.OnNext(t)
-						break
-					} else {
-						mux.Unlock()
-					}
-				}
-			}
-
-			if canceller.IsCancelled() {
-				return
-			}
-
-			subscriber.OnComplete()
-
-		})
-
-		sub := &Subscription{
-			CancelFunc: func() {
-				cancellable.Cancel()
-			},
-			RequestFunc: func(n int64) {
-				mux.Lock()
-				requested = true
-				mux.Unlock()
-			},
-		}
-
-		subscriber.OnSubscribe(sub)
-		return sub
-	}
-
-	return &Mono{OnSubscribe: onPublish}
+	return monoFromCallable(func() (cesium.T, bool) {
+		return f(), true
+	})
 }
 
 // Empty creates new cesium.Mono that emits no items and completes normally.
 func MonoEmpty() cesium.Mono {
-	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
-		if scheduler == nil {
-			scheduler = SeparateGoroutineScheduler()
-		}
-
-		cancellable := scheduler.Schedule(func(canceller cesium.Canceller) {
-			for {
-				if canceller.IsCancelled() {
-					return
-				}
-
-				subscriber.OnComplete()
-				return
-			}
-		})
-
-		sub := &Subscription{
-			CancelFunc: func() {
-				cancellable.Cancel()
-			},
-			RequestFunc: func(n int64) {
-			},
-		}
-
-		subscriber.OnSubscribe(sub)
-		return sub
-	}
-
-	return &Mono{OnSubscribe: onPublish}
+	return monoFromCallable(func() (cesium.T, bool) {
+		return nil, false
+	})
 }
 
 // Empty creates new cesium.Mono that emits no items and completes with error.

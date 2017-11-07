@@ -20,6 +20,7 @@ func TestJustOrEmpty(t *testing.T) {
 func TestJustOrEmptyWithNil(t *testing.T) {
 	verifier.
 		Create(mono.JustOrEmpty(nil)).
+		ThenRequest(1).
 		ExpectComplete().
 		Verify(t)
 }

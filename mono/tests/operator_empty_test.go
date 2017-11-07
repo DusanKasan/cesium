@@ -10,6 +10,7 @@ import (
 func TestEmpty(t *testing.T) {
 	verifier.
 		Create(mono.Empty()).
+		ThenRequest(1).
 		ExpectComplete().
 		Verify(t)
 }

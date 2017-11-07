@@ -6,6 +6,15 @@ import (
 	"github.com/DusanKasan/cesium"
 )
 
+type ScalarMono struct {
+	cesium.Mono
+	get func() (cesium.T, bool)
+}
+
+func (s *ScalarMono) Get() (cesium.T, bool) {
+	return s.get()
+}
+
 type Mono struct {
 	OnSubscribe func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription
 }
