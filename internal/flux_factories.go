@@ -1,8 +1,8 @@
 package internal
 
 import (
-	"sync"
 	"math"
+	"sync"
 
 	"github.com/DusanKasan/cesium"
 )
@@ -19,18 +19,76 @@ func FluxJust(items ...cesium.T) cesium.Flux {
 	return FluxFromSlice(items)
 }
 
-// FluxJust creates new cesium.Flux that emits the supplied items.
-func FluxJustOne(item cesium.T) cesium.Flux {
+// FluxFromCallable is internal way to instantiate a ScalarFlux (a Flux that
+// behaves like a mono, and offers more efficient implementation of some operators.
+func FluxFromCallable(f func() (cesium.T, bool)) cesium.Flux {
+	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
+		if scheduler == nil {
+			scheduler = SeparateGoroutineScheduler()
+		}
+
+		mux := sync.Mutex{}
+		requested := false
+
+		cancellable := scheduler.Schedule(func(canceller cesium.Canceller) {
+			for {
+				if canceller.IsCancelled() {
+					return
+				}
+
+				mux.Lock()
+				if requested {
+					mux.Unlock()
+
+					if canceller.IsCancelled() {
+						return
+					}
+
+					t, ok := f()
+					if ok {
+						subscriber.OnNext(t)
+					}
+					subscriber.OnComplete()
+					return
+				} else {
+					mux.Unlock()
+				}
+			}
+		})
+
+		sub := &Subscription{
+			CancelFunc: func() {
+				cancellable.Cancel()
+			},
+			RequestFunc: func(n int64) {
+				mux.Lock()
+				requested = true
+				mux.Unlock()
+			},
+		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
+	}
+
 	return &ScalarFlux{
-		FluxJust(item),
-		func() (cesium.T, bool) {
-			return item, true
-		},
+		&Flux{OnSubscribe: onPublish},
+		f,
 	}
 }
 
 // FromSlice creates new cesium.Flux that emits items from the supplied slice.
 func FluxFromSlice(items []cesium.T) cesium.Flux {
+	if len(items) == 0 {
+		return FluxEmpty()
+	}
+
+	if len(items) == 1 {
+		return FluxFromCallable(func() (cesium.T, bool) {
+			return items[0], true
+		})
+	}
+
 	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
 		if scheduler == nil {
 			scheduler = SeparateGoroutineScheduler()
@@ -127,6 +185,14 @@ func FluxFromSlice(items []cesium.T) cesium.Flux {
 // Range creates new cesium.Flux that emits 64bit integers from start to
 // (start + count).
 func FluxRange(start int, count int) cesium.Flux {
+	if count == 0 {
+		return FluxEmpty()
+	}
+
+	if count == 1 {
+		return FluxJust(start)
+	}
+
 	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
 		if scheduler == nil {
 			scheduler = SeparateGoroutineScheduler()
@@ -212,40 +278,15 @@ func FluxRange(start int, count int) cesium.Flux {
 
 // Empty creates new cesium.Flux that emits no items and completes normally.
 func FluxEmpty() cesium.Flux {
-	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
-		if scheduler == nil {
-			scheduler = SeparateGoroutineScheduler()
-		}
-
-		cancellable := scheduler.Schedule(func(canceller cesium.Canceller) {
-			for {
-				if canceller.IsCancelled() {
-					return
-				}
-
-				subscriber.OnComplete()
-				return
-			}
-		})
-
-		sub := &Subscription{
-			CancelFunc: func() {
-				cancellable.Cancel()
-			},
-			RequestFunc: func(n int64) {
-			},
-		}
-
-		subscriber.OnSubscribe(sub)
-		return sub
-	}
-
-	return &Flux{OnSubscribe: onPublish}
-
+	return FluxFromCallable(func() (cesium.T, bool) {
+		return nil, false
+	})
 }
 
-// Empty creates new cesium.Flux that emits no items and completes with error.
+// Error creates new cesium.Flux that emits no items and completes with error.
 func FluxError(err error) cesium.Flux {
+	//TODO: error flux
+
 	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
 		if scheduler == nil {
 			scheduler = SeparateGoroutineScheduler()
@@ -280,6 +321,8 @@ func FluxError(err error) cesium.Flux {
 
 // Never creates new cesium.Flux that emits no items and never completes.
 func FluxNever() cesium.Flux {
+	//TODO: Noop flux
+
 	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
 		if scheduler == nil {
 			scheduler = SeparateGoroutineScheduler()

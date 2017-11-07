@@ -107,6 +107,7 @@ func (f *Flux) DoFinally(fn func()) cesium.Flux {
 }
 
 func (f *Flux) Count() cesium.Mono {
+
 	return CountOperator(f)
 }
 

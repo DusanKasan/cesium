@@ -4,7 +4,7 @@
 
 [![Coverage Status](https://coveralls.io/repos/github/DusanKasan/cesium/badge.svg?branch=master)](https://coveralls.io/github/DusanKasan/cesium?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/DusanKasan/cesium)](https://goreportcard.com/report/github.com/DusanKasan/cesium) [![CircleCI](https://circleci.com/gh/DusanKasan/cesium.svg?style=shield)](https://circleci.com/gh/DusanKasan/cesium)
 
-This is a port of [Project Reactor](https://projectcesium.io/) into [Go](https://golang.org/). It provides reactive data streams with asynchronous pull backpressure, meaning you can control the emission source. Its aim is to be as close to the proposed Java API as possible, altering it slightly where needed for it to make sense in Go.
+This is a port of [Project Reactor](https://projectcesium.io/) into [Go](https://golang.org/). It provides reactive data streams with asynchronous pull backpressure and operator fusion. Its aim is to be as close to the proposed Java API as possible, altering it slightly where needed for it to make sense in Go.
 
 More documentation to come after all operators are implemented.
 

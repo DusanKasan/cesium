@@ -7,10 +7,10 @@ func CountOperator(pub cesium.Publisher) cesium.Mono {
 	case ScalarCallable:
 		_, ok := publisher.Get()
 		if ok {
-			return MonoJust(1)
+			return MonoJust(int64(1))
 		}
 
-		return MonoJust(0)
+		return MonoJust(int64(0))
 	case *Flux:
 		onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
 			p := CountProcessor()
@@ -35,6 +35,13 @@ func CountOperator(pub cesium.Publisher) cesium.Mono {
 
 		return &Mono{onPublish}
 	default:
-		panic("wtf")
+		onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
+			p := CountProcessor()
+
+			p.Subscribe(subscriber)
+			return publisher.Subscribe(p)
+		}
+
+		return &Mono{onPublish}
 	}
 }

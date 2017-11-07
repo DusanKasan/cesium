@@ -17,10 +17,6 @@ func Just(items ...cesium.T) cesium.Flux {
 	return internal.FluxJust(items...)
 }
 
-func Just1(item cesium.T) cesium.Flux {
-	return internal.FluxJustOne(item)
-}
-
 // FromSlice creates new cesium.Flux that emits items from the supplied slice.
 func FromSlice(slice []cesium.T) cesium.Flux {
 	return internal.FluxFromSlice(slice)
