@@ -21,3 +21,17 @@ func TestScan(t *testing.T) {
 		ExpectComplete().
 		Verify(t)
 }
+
+func TestScanScalarFlux(t *testing.T) {
+	publisher := flux.
+		Just(1).
+		Scan(func(a cesium.T, b cesium.T) cesium.T {
+			return a.(int) + b.(int)
+		})
+
+	verifier.
+		Create(publisher).
+		ExpectNext(1).
+		ExpectComplete().
+		Verify(t)
+}

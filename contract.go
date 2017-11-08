@@ -80,7 +80,7 @@ type Flux interface {
 
 	Count() Mono
 	Reduce(func(T, T) T) Mono
-	Scan(func(T, T) T) Mono
+	Scan(func(T, T) T) Flux
 	All(func(T) bool) Mono
 	Any(func(T) bool) Mono
 	HasElements() Mono

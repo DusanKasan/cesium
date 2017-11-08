@@ -22,7 +22,7 @@ func TestReduce(t *testing.T) {
 		Verify(t)
 }
 
-func TestReduceWithOneItem(t *testing.T) {
+func TestReduceScalarFLux(t *testing.T) {
 	publisher := flux.
 		Just(1).
 		Reduce(func(a cesium.T, b cesium.T) cesium.T {

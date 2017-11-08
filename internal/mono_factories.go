@@ -3,6 +3,8 @@ package internal
 import (
 	"sync"
 
+	"time"
+
 	"github.com/DusanKasan/cesium"
 )
 
@@ -270,6 +272,88 @@ func MonoCreate(f func(cesium.MonoSink)) cesium.Mono {
 			},
 			RequestFunc: func(n int64) {
 				sink.Request(n)
+			},
+		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
+	}
+
+	return &Mono{OnSubscribe: onPublish}
+}
+
+func MonoFromChannel(ch <-chan cesium.T) cesium.Mono {
+	subscribed := false
+	mux := sync.Mutex{}
+
+	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
+		mux.Lock()
+		if subscribed {
+			panic("can not resubscribe to flux made from a channel")
+		}
+
+		subscribed = true
+		mux.Unlock()
+
+		if scheduler == nil {
+			scheduler = SeparateGoroutineScheduler()
+		}
+
+		requestedMux := sync.Mutex{}
+		requested := int64(0)
+		unbounded := false
+
+		canc := scheduler.Schedule(func(c cesium.Canceller) {
+			if c.IsCancelled() {
+				return
+			}
+
+			for {
+				requestedMux.Lock()
+				if requested == 0 {
+					requestedMux.Unlock()
+					continue
+				}
+				requestedMux.Unlock()
+
+				select {
+				case t, ok := <-ch:
+					if c.IsCancelled() {
+						return
+					}
+
+					if ok {
+						mux.Lock()
+						requested--
+						mux.Unlock()
+						subscriber.OnNext(t)
+						subscriber.OnComplete()
+						return
+					} else {
+						subscriber.OnComplete()
+						return
+					}
+				case <-time.After(time.Millisecond):
+					if c.IsCancelled() {
+						return
+					}
+				}
+			}
+		})
+
+		sub := &Subscription{
+			CancelFunc: func() {
+				canc.Cancel()
+			},
+			RequestFunc: func(n int64) {
+				requestedMux.Lock()
+				if unbounded {
+					requestedMux.Unlock()
+					return
+				}
+
+				requested = requested + n
+				requestedMux.Unlock()
 			},
 		}
 

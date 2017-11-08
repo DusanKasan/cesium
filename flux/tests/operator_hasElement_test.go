@@ -17,11 +17,29 @@ func TestHasElement(t *testing.T) {
 		ExpectNext(true).
 		ExpectComplete().
 		Verify(t)
+
+	publisher = flux.
+		FromSlice([]cesium.T{1, 2, 3}).
+		HasElement(4)
+
+	verifier.Create(publisher).
+		ExpectNext(false).
+		ExpectComplete().
+		Verify(t)
 }
 
-func TestHasElementFalse(t *testing.T) {
+func TestHasElementScalarFlux(t *testing.T) {
 	publisher := flux.
-		FromSlice([]cesium.T{1, 2, 3}).
+		Just(1).
+		HasElement(1)
+
+	verifier.Create(publisher).
+		ExpectNext(true).
+		ExpectComplete().
+		Verify(t)
+
+	publisher = flux.
+		Just(1).
 		HasElement(4)
 
 	verifier.Create(publisher).

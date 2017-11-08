@@ -47,3 +47,16 @@ func TestHandleWhenNoEmissions(t *testing.T) {
 		ExpectError(cesium.NoEmissionOnSynchronousSinkError).
 		Verify(t)
 }
+
+func TestHandleScalarFlux(t *testing.T) {
+	f := flux.Just(1).
+		Handle(func(t cesium.T, sink cesium.SynchronousSink) {
+			sink.Next(10)
+		})
+
+	verifier.
+		Create(f).
+		ExpectNext(10).
+		ExpectComplete().
+		Verify(t)
+}

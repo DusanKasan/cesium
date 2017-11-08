@@ -19,10 +19,8 @@ func TestAll(t *testing.T) {
 		Create(publisher).
 		ExpectNext(true).
 		ExpectComplete()
-}
 
-func TestAllFalse(t *testing.T) {
-	publisher := flux.
+	publisher = flux.
 		FromSlice([]cesium.T{1, 2, 3}).
 		All(func(t cesium.T) bool {
 			return t.(int) > 2
@@ -31,5 +29,29 @@ func TestAllFalse(t *testing.T) {
 	verifier.
 		Create(publisher).
 		ExpectNext(false).
+		ExpectComplete()
+}
+
+func TestAllScalarFlux(t *testing.T) {
+	publisher := flux.
+		Just(1).
+		All(func(t cesium.T) bool {
+			return t.(int) > 2
+		})
+
+	verifier.
+		Create(publisher).
+		ExpectNext(false).
+		ExpectComplete()
+
+	publisher = flux.
+		Just(3).
+		All(func(t cesium.T) bool {
+			return t.(int) > 2
+		})
+
+	verifier.
+		Create(publisher).
+		ExpectNext(true).
 		ExpectComplete()
 }

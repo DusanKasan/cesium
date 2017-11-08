@@ -16,3 +16,13 @@ func TestTake(t *testing.T) {
 		ExpectComplete().
 		Verify(t)
 }
+
+func TestTakeScalarFlux(t *testing.T) {
+	f := flux.Just(1).Take(3)
+
+	verifier.
+		Create(f).
+		ExpectNext(1).
+		ExpectComplete().
+		Verify(t)
+}

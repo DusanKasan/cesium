@@ -67,3 +67,7 @@ func Defer(f func() cesium.Publisher) cesium.Flux {
 func Error(err error) cesium.Flux {
 	return internal.FluxError(err)
 }
+
+func FromChannel(c <-chan cesium.T) cesium.Flux {
+	return internal.FluxFromChannel(c)
+}

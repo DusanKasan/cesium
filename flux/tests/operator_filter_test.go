@@ -9,7 +9,7 @@ import (
 )
 
 // Tests filter on just(), proving that it works with ConditionalSubscriber
-func TestFilterSyncSourceWithMicroOperatorFusion(t *testing.T) {
+func TestFilterSyncSourceWithMicroOperatorFusionConditionalSubscriber(t *testing.T) {
 	f := flux.Just(2, 30, 22, 5, 60, 1).
 		Filter(func(a cesium.T) bool {
 			return a.(int) > 10
@@ -18,6 +18,31 @@ func TestFilterSyncSourceWithMicroOperatorFusion(t *testing.T) {
 	verifier.
 		Create(f).
 		ExpectNext(30, 22, 60).
+		ThenRequest(1).
+		ExpectComplete().
+		Verify(t)
+}
+
+func TestFilterMacroFusionScalarFlux(t *testing.T) {
+	f := flux.Just(11).
+		Filter(func(a cesium.T) bool {
+			return a.(int) > 10
+		})
+
+	verifier.
+		Create(f).
+		ExpectNext(11).
+		ThenRequest(1).
+		ExpectComplete().
+		Verify(t)
+
+	g := flux.Just(1).
+		Filter(func(a cesium.T) bool {
+			return a.(int) > 10
+		})
+
+	verifier.
+		Create(g).
 		ThenRequest(1).
 		ExpectComplete().
 		Verify(t)

@@ -56,3 +56,7 @@ func Using(resourceSupplier func() cesium.T, sourceSupplier func(cesium.T) cesiu
 func Create(f func(cesium.MonoSink)) cesium.Mono {
 	return internal.MonoCreate(f)
 }
+
+func FromChannel(c <-chan cesium.T) cesium.Mono {
+	return internal.MonoFromChannel(c)
+}

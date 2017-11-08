@@ -19,71 +19,12 @@ type ConditionalSubscriber interface {
 	OnNextIf(cesium.T) bool
 }
 
-type ScalarCallable interface {
-	Get() (cesium.T, bool)
-}
-
-type ScalarFlux struct {
-	cesium.Flux
-	get func() (cesium.T, bool)
-}
-
-func (s *ScalarFlux) Get() (cesium.T, bool) {
-	return s.get()
-}
-
-func (s *ScalarFlux) Count() cesium.Mono {
-	return CountOperator(s)
-}
-
 func (f *Flux) Filter(filter func(t cesium.T) bool) cesium.Flux {
-	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
-		p := FilterProcessor(filter)
-
-		subscription1 := p.Subscribe(subscriber)
-		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
-
-		sub := &Subscription{
-			CancelFunc: func() {
-				subscription1.Cancel()
-				subscription2.Cancel()
-			},
-			RequestFunc: func(n int64) {
-				subscription1.Request(n)
-			},
-		}
-
-		subscriber.OnSubscribe(sub)
-		return sub
-	}
-
-	return &Flux{onPublish}
+	return FluxFilterOperator(f, filter)
 }
 
 func (f *Flux) Map(mapper func(t cesium.T) cesium.T) cesium.Flux {
-	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
-		p := MapProcessor(mapper)
-
-		subscription1 := p.Subscribe(subscriber)
-		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
-
-		sub := &Subscription{
-			CancelFunc: func() {
-				subscription1.Cancel()
-				subscription2.Cancel()
-			},
-			RequestFunc: func(n int64) {
-				subscription1.Request(n)
-			},
-		}
-
-		subscriber.OnSubscribe(sub)
-		return sub
-	}
-
-	return &Flux{onPublish}
+	return FluxMapOperator(f, mapper)
 }
 
 func (f *Flux) DoFinally(fn func()) cesium.Flux {
@@ -112,8 +53,7 @@ func (f *Flux) DoFinally(fn func()) cesium.Flux {
 }
 
 func (f *Flux) Count() cesium.Mono {
-
-	return CountOperator(f)
+	return FluxCountOperator(f)
 }
 
 func (f *Flux) Reduce(fn func(cesium.T, cesium.T) cesium.T) cesium.Mono {
@@ -141,7 +81,7 @@ func (f *Flux) Reduce(fn func(cesium.T, cesium.T) cesium.T) cesium.Mono {
 	return &Mono{onPublish}
 }
 
-func (f *Flux) Scan(fn func(cesium.T, cesium.T) cesium.T) cesium.Mono {
+func (f *Flux) Scan(fn func(cesium.T, cesium.T) cesium.T) cesium.Flux {
 	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
 		p := ScanProcessor(fn)
 
@@ -163,7 +103,7 @@ func (f *Flux) Scan(fn func(cesium.T, cesium.T) cesium.T) cesium.Mono {
 		return sub
 	}
 
-	return &Mono{onPublish}
+	return &Flux{onPublish}
 }
 
 func (f *Flux) All(fn func(cesium.T) bool) cesium.Mono {

@@ -6,15 +6,6 @@ import (
 	"github.com/DusanKasan/cesium"
 )
 
-type ScalarMono struct {
-	cesium.Mono
-	get func() (cesium.T, bool)
-}
-
-func (s *ScalarMono) Get() (cesium.T, bool) {
-	return s.get()
-}
-
 type Mono struct {
 	OnSubscribe func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription
 }
@@ -24,53 +15,11 @@ func (m *Mono) Subscribe(subscriber cesium.Subscriber) cesium.Subscription {
 }
 
 func (m *Mono) Filter(filter func(t cesium.T) bool) cesium.Mono {
-	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
-		p := FilterProcessor(filter)
-
-		subscription1 := p.Subscribe(subscriber)
-		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
-
-		sub := &Subscription{
-			CancelFunc: func() {
-				subscription1.Cancel()
-				subscription2.Cancel()
-			},
-			RequestFunc: func(n int64) {
-				subscription1.Request(n)
-			},
-		}
-
-		subscriber.OnSubscribe(sub)
-		return sub
-	}
-
-	return &Mono{onPublish}
+	return MonoFilterOperator(m, filter)
 }
 
 func (m *Mono) Map(mapper func(t cesium.T) cesium.T) cesium.Mono {
-	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
-		p := MapProcessor(mapper)
-
-		subscription1 := p.Subscribe(subscriber)
-		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
-
-		sub := &Subscription{
-			CancelFunc: func() {
-				subscription1.Cancel()
-				subscription2.Cancel()
-			},
-			RequestFunc: func(n int64) {
-				subscription1.Request(n)
-			},
-		}
-
-		subscriber.OnSubscribe(sub)
-		return sub
-	}
-
-	return &Mono{onPublish}
+	return MonoMapOperator(m, mapper)
 }
 
 func (m *Mono) DoFinally(fn func()) cesium.Mono {

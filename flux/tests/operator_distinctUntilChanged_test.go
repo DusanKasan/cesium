@@ -17,3 +17,13 @@ func TestDistinctUntilChanged(t *testing.T) {
 		ExpectComplete().
 		Verify(t)
 }
+
+func TestDistinctUntilChangedScalarFlux(t *testing.T) {
+	f := flux.Just(1).DistinctUntilChanged()
+
+	verifier.
+		Create(f).
+		ExpectNext(1).
+		ExpectComplete().
+		Verify(t)
+}

@@ -18,16 +18,26 @@ func TestHasElements(t *testing.T) {
 		ExpectNext(true).
 		ExpectComplete().
 		Verify(t)
-}
 
-func TestHasElementsFalse(t *testing.T) {
-	publisher := flux.
+	publisher = flux.
 		Empty().
 		HasElements()
 
 	verifier.
 		Create(publisher).
 		ExpectNext(false).
+		ExpectComplete().
+		Verify(t)
+}
+
+func TestHasElementsScalarFlux(t *testing.T) {
+	publisher := flux.
+		Just(1).
+		HasElements()
+
+	verifier.
+		Create(publisher).
+		ExpectNext(true).
 		ExpectComplete().
 		Verify(t)
 }
