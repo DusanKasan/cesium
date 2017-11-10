@@ -64,6 +64,7 @@ type Flux interface {
 	Take(int64) Flux
 
 	Map(func(T) T) Flux
+	FlatMap(func(T) Publisher, ...Scheduler) Flux
 
 	DoOnSubscribe(func(Subscription)) Flux
 	DoOnRequest(func(int64)) Flux
@@ -76,7 +77,7 @@ type Flux interface {
 	DoOnCancel(func()) Flux
 	Log(*log.Logger) Flux
 
-	Handle(fn func(T, SynchronousSink)) Flux
+	Handle(func(T, SynchronousSink)) Flux
 
 	Count() Mono
 	Reduce(func(T, T) T) Mono
@@ -93,6 +94,8 @@ type Mono interface {
 	Publisher
 
 	Map(func(T) T) Mono
+	FlatMap(fn func(T) Mono, scheduler ...Scheduler) Mono
+	FlatMapMany(fn func(T) Publisher, scheduler ...Scheduler) Flux
 
 	Filter(func(T) bool) Mono
 
@@ -107,7 +110,11 @@ type Mono interface {
 	DoFinally(func()) Mono
 	Log(*log.Logger) Mono
 
+	Handle(func(T, SynchronousSink)) Mono
+
 	ConcatWith(...Publisher) Flux
+
+	Block() (T, bool, error)
 }
 
 type FluxSink interface {

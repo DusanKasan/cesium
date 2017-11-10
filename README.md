@@ -317,3 +317,5 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 
 - Add schedule periodic and schedule after to schedulers and add ability to insert virtual clock ( this will be useful in tests)
 - How to split up tests for normal and scalar flux/mono?
+- Fix locking for flatMaps
+- FlatMapMany docs

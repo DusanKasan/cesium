@@ -381,3 +381,117 @@ func (m *Mono) ConcatWith(publishers ...cesium.Publisher) cesium.Flux {
 
 	return &Flux{onPublish}
 }
+
+func (m *Mono) FlatMap(fn func(cesium.T) cesium.Mono, scheduler ...cesium.Scheduler) cesium.Mono {
+	var sch = SeparateGoroutineScheduler()
+	if len(scheduler) > 0 {
+		sch = scheduler[0]
+	}
+
+	onPublish := func(subscriber cesium.Subscriber, s cesium.Scheduler) cesium.Subscription {
+		p := FlatMapProcessor(func(t cesium.T) cesium.Publisher { return fn(t).(cesium.Publisher) }, sch)
+
+		subscription1 := p.Subscribe(subscriber)
+		subscription2 := m.OnSubscribe(p, s)
+		p.OnSubscribe(subscription2)
+
+		sub := &Subscription{
+			CancelFunc: func() {
+				subscription1.Cancel()
+				subscription2.Cancel()
+			},
+			RequestFunc: func(n int64) {
+				subscription1.Request(n)
+			},
+		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
+	}
+
+	return &Mono{onPublish}
+}
+
+func (m *Mono) Handle(fn func(cesium.T, cesium.SynchronousSink)) cesium.Mono {
+	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
+		p := HandleProcessor(fn)
+
+		subscription1 := p.Subscribe(subscriber)
+		subscription2 := m.OnSubscribe(p, scheduler)
+		p.OnSubscribe(subscription2)
+
+		sub := &Subscription{
+			CancelFunc: func() {
+				subscription1.Cancel()
+				subscription2.Cancel()
+			},
+			RequestFunc: func(n int64) {
+				subscription1.Request(n)
+			},
+		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
+	}
+
+	return &Mono{onPublish}
+}
+
+func (m *Mono) FlatMapMany(fn func(cesium.T) cesium.Publisher, scheduler ...cesium.Scheduler) cesium.Flux {
+	var sch = SeparateGoroutineScheduler()
+	if len(scheduler) > 0 {
+		sch = scheduler[0]
+	}
+
+	onPublish := func(subscriber cesium.Subscriber, s cesium.Scheduler) cesium.Subscription {
+		p := FlatMapProcessor(fn, sch)
+
+		subscription1 := p.Subscribe(subscriber)
+		subscription2 := m.OnSubscribe(p, s)
+		p.OnSubscribe(subscription2)
+
+		sub := &Subscription{
+			CancelFunc: func() {
+				subscription1.Cancel()
+				subscription2.Cancel()
+			},
+			RequestFunc: func(n int64) {
+				subscription1.Request(n)
+			},
+		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
+	}
+
+	return &Flux{onPublish}
+}
+
+func (m *Mono) Block() (cesium.T, bool, error) {
+	type signal struct {
+		item cesium.T
+		ok   bool
+		err  error
+	}
+
+	c := make(chan signal)
+
+	sub := m.Subscribe(DoObserver(
+		func(t cesium.T) {
+			c <- signal{t, true, nil}
+		},
+		func() {
+			c <- signal{nil, false, nil}
+		},
+		func(e error) {
+			c <- signal{nil, false, e}
+		},
+	))
+
+	sub.Request(1)
+
+	select {
+	case s := <-c:
+		return s.item, s.ok, s.err
+	}
+}

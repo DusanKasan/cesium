@@ -94,10 +94,11 @@ func (s *ScalarFlux) DistinctUntilChanged() cesium.Flux {
 	return s
 }
 
-func (s *ScalarFlux) Take(n int64) cesium.Flux {
-	if n > 0 {
-		return s
+func (s *ScalarFlux) FlatMap(fn func(cesium.T) cesium.Publisher, scheduler ...cesium.Scheduler) cesium.Flux {
+	t, ok := s.Get()
+	if ok {
+		return FluxDefer(func() cesium.Publisher { return fn(t) })
 	}
 
-	return FluxEmpty()
+	return s
 }

@@ -643,3 +643,33 @@ func (f *Flux) Take(n int64) cesium.Flux {
 
 	return &Flux{onPublish}
 }
+
+func (f *Flux) FlatMap(fn func(cesium.T) cesium.Publisher, scheduler ...cesium.Scheduler) cesium.Flux {
+	var sch = SeparateGoroutineScheduler()
+	if len(scheduler) > 0 {
+		sch = scheduler[0]
+	}
+
+	onPublish := func(subscriber cesium.Subscriber, s cesium.Scheduler) cesium.Subscription {
+		p := FlatMapProcessor(fn, sch)
+
+		subscription1 := p.Subscribe(subscriber)
+		subscription2 := f.OnSubscribe(p, s)
+		p.OnSubscribe(subscription2)
+
+		sub := &Subscription{
+			CancelFunc: func() {
+				subscription1.Cancel()
+				subscription2.Cancel()
+			},
+			RequestFunc: func(n int64) {
+				subscription1.Request(n)
+			},
+		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
+	}
+
+	return &Flux{onPublish}
+}

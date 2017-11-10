@@ -809,7 +809,7 @@ func HandleProcessor(fn func(cesium.T, cesium.SynchronousSink)) cesium.Processor
 
 			subscriberMux.Lock()
 			subscriber = s
-			subscriber.OnSubscribe(subscription)
+			subscriber.OnSubscribe(sub)
 			subscriberMux.Unlock()
 
 			return sub
@@ -855,11 +855,19 @@ func HandleProcessor(fn func(cesium.T, cesium.SynchronousSink)) cesium.Processor
 		},
 		onComplete: func() {
 			subscriberMux.Lock()
+			if terminated {
+				subscriberMux.Unlock()
+				return
+			}
 			subscriber.OnComplete()
 			subscriberMux.Unlock()
 		},
 		onError: func(err error) {
 			subscriberMux.Lock()
+			if terminated {
+				subscriberMux.Unlock()
+				return
+			}
 			subscriber.OnError(err)
 			subscriberMux.Unlock()
 		},
@@ -1110,6 +1118,183 @@ func TakeProcessor(n int64) cesium.Processor {
 			subscriberMux.Unlock()
 		},
 		onError: func(err error) {
+			subscriberMux.Lock()
+			subscriber.OnError(err)
+			subscriberMux.Unlock()
+		},
+	}
+}
+
+type indexedEmission struct {
+	t     cesium.T
+	index int
+}
+
+func FlatMapProcessor(f func(cesium.T) cesium.Publisher, scheduler cesium.Scheduler) cesium.Processor {
+	var subscriber cesium.Subscriber
+	var subscription cesium.Subscription
+	subscriberMux := sync.Mutex{}
+	subscribtionMux := sync.Mutex{}
+
+	var emissionBuffer []indexedEmission
+	subscriptions := make(map[int]cesium.Subscription)
+	mux := sync.Mutex{}
+	hasItems := false
+	closed := false
+	currentIndex := 0
+	openSubscriptions := 0
+	requested := int64(0)
+	mainEmittedAll := false
+
+	return &processor{
+		subscribe: func(s cesium.Subscriber) cesium.Subscription {
+			sub := &Subscription{
+				CancelFunc: func() {
+					subscribtionMux.Lock()
+					if subscription != nil {
+						subscription.Cancel()
+					}
+					subscribtionMux.Unlock()
+				},
+				RequestFunc: func(n int64) {
+					subscribtionMux.Lock()
+					mux.Lock()
+					for len(emissionBuffer) > 0 && n > 0 {
+						emission := emissionBuffer[0]
+						emissionBuffer = emissionBuffer[1:]
+						n--
+
+						scheduler.Schedule(func(c cesium.Canceller) {
+							if !c.IsCancelled() {
+								subscriber.OnNext(emission.t)
+								mux.Lock()
+								subscriptions[emission.index].Request(1)
+								mux.Unlock()
+							}
+						})
+					}
+
+					if openSubscriptions == 0 && mainEmittedAll && len(emissionBuffer) == 0 {
+						scheduler.Schedule(func(c cesium.Canceller) {
+							subscriber.OnComplete()
+						})
+					}
+
+					requested = requested + n
+					mux.Unlock()
+					subscribtionMux.Unlock()
+				},
+			}
+
+			subscriberMux.Lock()
+			subscriber = s
+			subscriber.OnSubscribe(subscription)
+			subscriberMux.Unlock()
+
+			return sub
+		},
+		onSubscribe: func(s cesium.Subscription) {
+			subscribtionMux.Lock()
+			subscription = s
+			s.Request(math.MaxInt64)
+			subscribtionMux.Unlock()
+		},
+		onNext: func(t cesium.T) {
+			mux.Lock()
+			if closed {
+				mux.Unlock()
+				return
+			}
+
+			hasItems = true
+			i := currentIndex
+			currentIndex++
+			openSubscriptions++
+			mux.Unlock()
+
+			sub := f(t).Subscribe(DoObserver(
+				func(t cesium.T) {
+					mux.Lock()
+					if !closed {
+						emissionBuffer = append(emissionBuffer, indexedEmission{t, i})
+						if requested > 0 {
+							requested--
+							emission := emissionBuffer[0]
+							emissionBuffer = emissionBuffer[1:]
+							subscriptions[i].Request(1)
+							mux.Unlock()
+
+							scheduler.Schedule(func(c cesium.Canceller) {
+								if !c.IsCancelled() {
+									subscriberMux.Lock()
+									subscriber.OnNext(emission.t)
+									subscriberMux.Unlock()
+								}
+							})
+
+							return
+						}
+
+						mux.Unlock()
+						return
+					}
+					mux.Unlock()
+				},
+				func() {
+					mux.Lock()
+					openSubscriptions--
+					if openSubscriptions == 0 && mainEmittedAll && len(emissionBuffer) == 0 {
+						scheduler.Schedule(func(c cesium.Canceller) {
+							if !c.IsCancelled() {
+								subscriber.OnComplete()
+							}
+						})
+
+					}
+					mux.Unlock()
+				},
+				func(err error) {
+					mux.Lock()
+					closed = true
+					emissionBuffer = []indexedEmission{}
+
+					for _, s := range subscriptions {
+						s.Cancel()
+					}
+					mux.Unlock()
+
+					subscriberMux.Lock()
+					subscriber.OnError(err)
+					subscriberMux.Unlock()
+				},
+			))
+
+			mux.Lock()
+			subscriptions[i] = sub
+			mux.Unlock()
+			sub.Request(1)
+		},
+		onComplete: func() {
+			mux.Lock()
+			mainEmittedAll = true
+			mux.Unlock()
+
+			subscriberMux.Lock()
+			if !hasItems {
+				subscriber.OnComplete()
+			}
+			subscriberMux.Unlock()
+		},
+		onError: func(err error) {
+			mux.Lock()
+			closed = true
+			emissionBuffer = []indexedEmission{}
+
+			for _, s := range subscriptions {
+				s.Cancel()
+			}
+			mux.Unlock()
+
 			subscriberMux.Lock()
 			subscriber.OnError(err)
 			subscriberMux.Unlock()
