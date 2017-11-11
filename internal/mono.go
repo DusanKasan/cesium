@@ -3,6 +3,8 @@ package internal
 import (
 	"log"
 
+	"time"
+
 	"github.com/DusanKasan/cesium"
 )
 
@@ -493,5 +495,36 @@ func (m *Mono) Block() (cesium.T, bool, error) {
 	select {
 	case s := <-c:
 		return s.item, s.ok, s.err
+	}
+}
+
+func (m *Mono) BlockTimeout(duration time.Duration) (cesium.T, bool, error) {
+	type signal struct {
+		item cesium.T
+		ok   bool
+		err  error
+	}
+
+	c := make(chan signal)
+
+	sub := m.Subscribe(DoObserver(
+		func(t cesium.T) {
+			c <- signal{t, true, nil}
+		},
+		func() {
+			c <- signal{nil, false, nil}
+		},
+		func(e error) {
+			c <- signal{nil, false, e}
+		},
+	))
+
+	sub.Request(1)
+
+	select {
+	case s := <-c:
+		return s.item, s.ok, s.err
+	case <-time.After(duration):
+		return nil, false, cesium.TimeoutError
 	}
 }

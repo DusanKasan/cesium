@@ -153,7 +153,7 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 - [x] Mono.JustOrEmpty
 - [ ] Mono.FromSupplier
 - [x] FromSlice
-- [ ] FromChannel
+- [x] FromChannel
 - [x] Mono.FromCallable
 - [x] Empty
 - [x] Never
@@ -306,16 +306,15 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 
 #### Synchronizing
 
-- [ ] Flux.BlockFirst
-- [ ] Flux.BlockFirstTimeout
-- [ ] Flux.BlockLast
-- [ ] Flux.BlockLastTimeout
-- [ ] Mono.Block
-- [ ] Mono.BlockTimeout
+- [x] Flux.BlockFirst
+- [x] Flux.BlockFirstTimeout
+- [x] Flux.BlockLast
+- [x] Flux.BlockLastTimeout
+- [x] Mono.Block
+- [x] Mono.BlockTimeout
 
 ### TODO
 
 - Add schedule periodic and schedule after to schedulers and add ability to insert virtual clock ( this will be useful in tests)
 - How to split up tests for normal and scalar flux/mono?
 - Fix locking for flatMaps
-- FlatMapMany docs

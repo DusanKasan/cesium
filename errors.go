@@ -8,3 +8,4 @@ func (e err) Error() string {
 
 const DownstreamUnableToKeepUpError = err("Downstream is unable to keep up")
 const NoEmissionOnSynchronousSinkError = err("No emissions received on the sink, epected at least one")
+const TimeoutError = err("Timeout")

@@ -3,6 +3,10 @@ package internal
 import (
 	"log"
 
+	"sync"
+
+	"time"
+
 	"github.com/DusanKasan/cesium"
 )
 
@@ -672,4 +676,156 @@ func (f *Flux) FlatMap(fn func(cesium.T) cesium.Publisher, scheduler ...cesium.S
 	}
 
 	return &Flux{onPublish}
+}
+
+func (f *Flux) BlockFirst() (cesium.T, bool, error) {
+	type signal struct {
+		item cesium.T
+		ok   bool
+		err  error
+	}
+
+	c := make(chan signal)
+	once := sync.Once{}
+
+	sub := f.Subscribe(DoObserver(
+		func(t cesium.T) {
+			once.Do(func() {
+				c <- signal{t, true, nil}
+			})
+		},
+		func() {
+			once.Do(func() {
+				c <- signal{nil, false, nil}
+			})
+		},
+		func(e error) {
+			once.Do(func() {
+				c <- signal{nil, false, e}
+			})
+		},
+	))
+
+	sub.Request(1)
+
+	select {
+	case s := <-c:
+		sub.Cancel()
+		return s.item, s.ok, s.err
+	}
+}
+
+func (f *Flux) BlockFirstTimeout(duration time.Duration) (cesium.T, bool, error) {
+	type signal struct {
+		item cesium.T
+		ok   bool
+		err  error
+	}
+
+	c := make(chan signal)
+	once := sync.Once{}
+
+	sub := f.Subscribe(DoObserver(
+		func(t cesium.T) {
+			once.Do(func() {
+				c <- signal{t, true, nil}
+			})
+		},
+		func() {
+			once.Do(func() {
+				c <- signal{nil, false, nil}
+			})
+		},
+		func(e error) {
+			once.Do(func() {
+				c <- signal{nil, false, e}
+			})
+		},
+	))
+
+	sub.Request(1)
+
+	select {
+	case s := <-c:
+		sub.Cancel()
+		return s.item, s.ok, s.err
+	case <-time.After(duration):
+		sub.Cancel()
+		return nil, false, cesium.TimeoutError
+	}
+}
+
+func (f *Flux) BlockLast() (cesium.T, bool, error) {
+	type signal struct {
+		item cesium.T
+		ok   bool
+		err  error
+	}
+
+	c := make(chan signal)
+	once := sync.Once{}
+	var lastSignal signal
+
+	sub := f.Subscribe(DoObserver(
+		func(t cesium.T) {
+			lastSignal = signal{t, true, nil}
+		},
+		func() {
+			once.Do(func() {
+				c <- lastSignal
+			})
+		},
+		func(e error) {
+			once.Do(func() {
+				c <- signal{nil, false, e}
+			})
+		},
+	))
+
+	sub.RequestUnbounded()
+
+	select {
+	case s := <-c:
+		sub.Cancel()
+		return s.item, s.ok, s.err
+	}
+}
+
+func (f *Flux) BlockLastTimeout(duration time.Duration) (cesium.T, bool, error) {
+	type signal struct {
+		item cesium.T
+		ok   bool
+		err  error
+	}
+
+	c := make(chan signal)
+	once := sync.Once{}
+	var lastSignal signal
+
+	sub := f.Subscribe(DoObserver(
+		func(t cesium.T) {
+			lastSignal = signal{t, true, nil}
+		},
+		func() {
+			once.Do(func() {
+				c <- lastSignal
+			})
+		},
+		func(e error) {
+			once.Do(func() {
+				c <- signal{nil, false, e}
+			})
+		},
+	))
+
+	sub.RequestUnbounded()
+
+	select {
+	case s := <-c:
+		sub.Cancel()
+		return s.item, s.ok, s.err
+	case <-time.After(duration):
+		sub.Cancel()
+		return nil, false, cesium.TimeoutError
+	}
 }

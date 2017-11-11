@@ -1,6 +1,9 @@
 package cesium
 
-import "log"
+import (
+	"log"
+	"time"
+)
 
 type T interface{}
 
@@ -88,6 +91,11 @@ type Flux interface {
 	HasElement(T) Mono
 	Concat(Publisher /*<cesium.Publisher>*/) Flux
 	ConcatWith(...Publisher) Flux
+
+	BlockFirst() (T, bool, error)
+	BlockFirstTimeout(time.Duration) (T, bool, error)
+	BlockLast() (T, bool, error)
+	BlockLastTimeout(time.Duration) (T, bool, error)
 }
 
 type Mono interface {
@@ -115,6 +123,7 @@ type Mono interface {
 	ConcatWith(...Publisher) Flux
 
 	Block() (T, bool, error)
+	BlockTimeout(time.Duration) (T, bool, error)
 }
 
 type FluxSink interface {
