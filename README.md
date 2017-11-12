@@ -263,9 +263,8 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 
 #### Handling errors
 
-- [ ] Error
 - [ ] Timeout
-- [ ] OnErrorReturn
+- [x] OnErrorReturn
 - [ ] OnErrorResume
 - [ ] OnErrorMap
 - [ ] Retry

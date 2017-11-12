@@ -144,6 +144,8 @@ type Flux interface {
 	Concat(Publisher /*<cesium.Publisher>*/) Flux
 	ConcatWith(...Publisher) Flux
 
+	OnErrorReturn(T) Flux
+
 	BlockFirst() (T, bool, error)
 	BlockFirstTimeout(time.Duration) (T, bool, error)
 	BlockLast() (T, bool, error)
@@ -175,6 +177,8 @@ type Mono interface {
 	Handle(func(T, SynchronousSink)) Mono
 
 	ConcatWith(...Publisher) Flux
+
+	OnErrorReturn(T) Mono
 
 	Block() (T, bool, error)
 	BlockTimeout(time.Duration) (T, bool, error)

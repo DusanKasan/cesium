@@ -829,3 +829,28 @@ func (f *Flux) BlockLastTimeout(duration time.Duration) (cesium.T, bool, error) 
 		return nil, false, cesium.TimeoutError
 	}
 }
+
+func (f *Flux) OnErrorReturn(fallbackValue cesium.T) cesium.Flux {
+	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
+		p := OnErrorReturnProcessor(fallbackValue)
+
+		subscription1 := p.Subscribe(subscriber)
+		subscription2 := f.OnSubscribe(p, scheduler)
+		p.OnSubscribe(subscription2)
+
+		sub := &Subscription{
+			CancelFunc: func() {
+				subscription1.Cancel()
+				subscription2.Cancel()
+			},
+			RequestFunc: func(n int64) {
+				subscription1.Request(n)
+			},
+		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
+	}
+
+	return &Flux{onPublish}
+}
