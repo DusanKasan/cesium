@@ -1,3 +1,7 @@
+// Package verifier contains the StepVerifier type which provides a declarative
+// way of creating a verifiable script for an async Publisher sequence, by
+// expressing expectations about the events that will happen upon subscription.
+// The verification is triggered by calling the verify(*testing.T) method.
 package verifier
 
 import (
@@ -119,23 +123,26 @@ func (o *bufferObserver) PurgeBuffer() {
 	o.mux.Unlock()
 }
 
-type stepVerifier struct {
+type StepVerifier struct {
 	publisher    cesium.Publisher
 	expectations []expectation
 	timeout      time.Duration
 }
 
-func Create(p cesium.Publisher) *stepVerifier {
-	return &stepVerifier{publisher: p, timeout: time.Millisecond * 200}
+// Creates a step verifier around the passed Publisher.
+func Create(p cesium.Publisher) *StepVerifier {
+	return &StepVerifier{publisher: p, timeout: time.Millisecond * 200}
 }
 
-func (sv *stepVerifier) AndTimeout(duration time.Duration) *stepVerifier {
+// Specifies a timeout for the expectations to come.
+func (sv *StepVerifier) AndTimeout(duration time.Duration) *StepVerifier {
 	sv.timeout = duration
 
 	return sv
 }
 
-func (sv *stepVerifier) ExpectNext(items ...cesium.T) *stepVerifier {
+// Expect the specified items to be emitted. Handles the requesting internally.
+func (sv *StepVerifier) ExpectNext(items ...cesium.T) *StepVerifier {
 	for _, i := range items {
 		sv.expectations = append(sv.expectations, expectation{
 			expectationType: "next",
@@ -146,7 +153,8 @@ func (sv *stepVerifier) ExpectNext(items ...cesium.T) *stepVerifier {
 	return sv
 }
 
-func (sv *stepVerifier) ExpectComplete() *stepVerifier {
+// Expect complete signal to be emitted.
+func (sv *StepVerifier) ExpectComplete() *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "complete",
 	})
@@ -154,7 +162,8 @@ func (sv *stepVerifier) ExpectComplete() *stepVerifier {
 	return sv
 }
 
-func (sv *stepVerifier) ExpectError(err error) *stepVerifier {
+// Expect error signal with the specified error to be emitted.
+func (sv *StepVerifier) ExpectError(err error) *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "error",
 		err:             err,
@@ -163,7 +172,8 @@ func (sv *stepVerifier) ExpectError(err error) *stepVerifier {
 	return sv
 }
 
-func (sv *stepVerifier) ThenCancel() *stepVerifier {
+// Cancel the underlying subscription.
+func (sv *StepVerifier) ThenCancel() *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "cancel",
 	})
@@ -171,7 +181,8 @@ func (sv *stepVerifier) ThenCancel() *stepVerifier {
 	return sv
 }
 
-func (sv *stepVerifier) ThenAwait(duration time.Duration) *stepVerifier {
+// Wait for the specified duration before executing next expectation.
+func (sv *StepVerifier) ThenAwait(duration time.Duration) *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "await",
 		value:           duration,
@@ -180,7 +191,8 @@ func (sv *stepVerifier) ThenAwait(duration time.Duration) *stepVerifier {
 	return sv
 }
 
-func (sv *stepVerifier) ThenRequest(i int64) *stepVerifier {
+// Request the specified amount of items from the underlying subscription.
+func (sv *StepVerifier) ThenRequest(i int64) *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "request",
 		value:           i,
@@ -189,7 +201,8 @@ func (sv *stepVerifier) ThenRequest(i int64) *stepVerifier {
 	return sv
 }
 
-func (sv *stepVerifier) ExpectNextCount(i int) *stepVerifier {
+// Checks the specified amount of items to be emitted.
+func (sv *StepVerifier) ExpectNextCount(i int) *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "nextCount",
 		value:           i,
@@ -198,7 +211,8 @@ func (sv *stepVerifier) ExpectNextCount(i int) *stepVerifier {
 	return sv
 }
 
-func (sv *stepVerifier) Then(f func()) *stepVerifier {
+// Execute the passed function.
+func (sv *StepVerifier) Then(f func()) *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "then",
 		value:           f,
@@ -207,12 +221,9 @@ func (sv *stepVerifier) Then(f func()) *stepVerifier {
 	return sv
 }
 
-func (sv *stepVerifier) WithTimeout(duration time.Duration) *stepVerifier {
-	sv.timeout = duration
-	return sv
-}
-
-func (sv *stepVerifier) Verify(t *testing.T) {
+// Subscribe to the underlying publisher and start executing the expectation
+// chain. Output the errors to the passed T.
+func (sv *StepVerifier) Verify(t *testing.T) {
 	observer := &bufferObserver{}
 	s := sv.publisher.Subscribe(observer)
 	pendingRequests := int64(0)
