@@ -834,9 +834,9 @@ func FluxFromChannel(ch <-chan cesium.T) cesium.Flux {
 					}
 
 					if ok {
-						mux.Lock()
+						requestedMux.Lock()
 						requested--
-						mux.Unlock()
+						requestedMux.Unlock()
 						subscriber.OnNext(t)
 					} else {
 						subscriber.OnComplete()
