@@ -6,9 +6,12 @@
 
 This is a port of [Project Reactor](https://projectcesium.io/) into [Go](https://golang.org/). It provides reactive data streams with asynchronous pull backpressure and operator fusion. Its aim is to be as close to the proposed Java API as possible, altering it slightly where needed for it to make sense in Go.
 
-For more information see godocs at: https://godoc.org/github.com/DusanKasan/cesium, https://godoc.org/github.com/DusanKasan/cesium/flux and https://godoc.org/github.com/DusanKasan/cesium/mono.
+For more information see generated godocs about:
+- [Operators and usage](https://godoc.org/github.com/DusanKasan/cesium)
+- [Instantiating a Flux](https://godoc.org/github.com/DusanKasan/cesium/flux)
+- [Instantiating a Mono](https://godoc.org/github.com/DusanKasan/cesium/mono)
 
-More documentation to come after all operators are implemented.
+More thorough documentation to come after most/all operators are implemented.
 
 ### Naming
 
@@ -159,7 +162,7 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 - [x] DoAfterTerminate
 - [x] DoFinally(func())
 - [x] Log(log.Logger)
-- [ ] DoOnEach
+- [x] DoOnEach
 - [ ] Materialize
 - [ ] Dematerialize
 

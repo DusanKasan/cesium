@@ -1,3 +1,6 @@
+// Package flux is a convenience shorthand for creating instances of
+// cesium.Flux. It provides all the factories in a nice package name so their
+// usage is more straightforward in your code.
 package flux
 
 import (
@@ -12,7 +15,7 @@ const OverflowStrategyDrop = overflowStrategy(internal.OverflowStrategyDrop)
 const OverflowStrategyError = overflowStrategy(internal.OverflowStrategyError)
 const OverflowStrategyIgnore = overflowStrategy(internal.OverflowStrategyIgnore)
 
-// FromSlice creates new cesium.Flux that emits the supplied items.
+// Just creates new cesium.Flux that emits the supplied items and completes.
 func Just(items ...cesium.T) cesium.Flux {
 	return internal.FluxJust(items...)
 }
