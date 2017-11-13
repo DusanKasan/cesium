@@ -553,3 +553,26 @@ func (m *Mono) OnErrorReturn(fallbackValue cesium.T) cesium.Mono {
 
 	return &Mono{onPublish}
 }
+
+func (m *Mono) DoOnEach(fn func(cesium.Signal)) cesium.Mono {
+	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
+		p := DoOnEachProcessor(fn)
+
+		subscription1 := p.Subscribe(subscriber)
+		subscription2 := m.OnSubscribe(p, scheduler)
+		sub := &Subscription{
+			CancelFunc: func() {
+				subscription1.Cancel()
+				subscription2.Cancel()
+			},
+			RequestFunc: func(n int64) {
+				subscription1.Request(n)
+			},
+		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
+	}
+
+	return &Mono{onPublish}
+}

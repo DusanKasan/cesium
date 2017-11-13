@@ -37,19 +37,22 @@ func (s *ScalarMono) Handle(fn func(cesium.T, cesium.SynchronousSink)) cesium.Mo
 
 	sink := &SynchronousSink{}
 	fn(t, sink)
-	emission := sink.GetEmission()
-	switch emission.EventType {
-	case "next":
-		return monoFromCallable(func() (cesium.T, bool) {
-			return emission.Value, true
-		})
-	case "complete":
-		return MonoEmpty()
-	case "error":
-		return MonoError(emission.Err)
-	default:
-		return MonoError(cesium.NoEmissionOnSynchronousSinkError)
+	sig := sink.Signal()
+	if sig != nil {
+		switch sig.Type() {
+		case cesium.SignalTypeOnNext:
+			return monoFromCallable(func() (cesium.T, bool) {
+				return sig.Item(), true
+			})
+		case cesium.SignalTypeOnComplete:
+			return MonoEmpty()
+		case cesium.SignalTypeOnError:
+			return MonoError(sig.Error())
+		}
 	}
+
+	return MonoError(cesium.NoEmissionOnSynchronousSinkError)
+
 }
 
 func (s *ScalarMono) FlatMapMany(fn func(cesium.T) cesium.Publisher, scheduler ...cesium.Scheduler) cesium.Flux {

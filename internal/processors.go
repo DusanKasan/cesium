@@ -828,29 +828,26 @@ func HandleProcessor(fn func(cesium.T, cesium.SynchronousSink)) cesium.Processor
 
 			sink := &SynchronousSink{}
 			fn(t, sink)
-			emission := sink.GetEmission()
-			switch emission.EventType {
-			case "next":
-				subscriber.OnNext(emission.Value)
-			case "complete":
-				subscriber.OnComplete()
-				terminated = true
-				subscriptionMux.Lock()
-				subscription.Cancel()
-				subscriptionMux.Unlock()
-			case "error":
-				subscriber.OnError(emission.Err)
-				terminated = true
-				subscriptionMux.Lock()
-				subscription.Cancel()
-				subscriptionMux.Unlock()
-			default:
+			sig := sink.Signal()
+			if sig == nil {
 				subscriber.OnError(cesium.NoEmissionOnSynchronousSinkError)
 				terminated = true
 				subscriptionMux.Lock()
 				subscription.Cancel()
 				subscriptionMux.Unlock()
+				subscriberMux.Unlock()
+				return
 			}
+
+			sig.Accept(subscriber)
+
+			if sig.IsTerminal() {
+				terminated = true
+				subscriptionMux.Lock()
+				subscription.Cancel()
+				subscriptionMux.Unlock()
+			}
+
 			subscriberMux.Unlock()
 		},
 		onComplete: func() {
@@ -1353,6 +1350,65 @@ func OnErrorReturnProcessor(fallbackValue cesium.T) cesium.Processor {
 			subscriberMux.Lock()
 			subscriber.OnNext(fallbackValue)
 			subscriber.OnComplete()
+			subscriberMux.Unlock()
+		},
+	}
+}
+
+func DoOnEachProcessor(f func(cesium.Signal)) cesium.Processor {
+	var subscriber cesium.Subscriber
+	var subscription cesium.Subscription
+	subscriberMux := sync.Mutex{}
+	subscriptionMux := sync.Mutex{}
+
+	return &processor{
+		subscribe: func(s cesium.Subscriber) cesium.Subscription {
+			sub := &Subscription{
+				CancelFunc: func() {
+					subscriptionMux.Lock()
+					if subscription != nil {
+						subscription.Cancel()
+					}
+					subscriptionMux.Unlock()
+				},
+				RequestFunc: func(n int64) {
+					subscriptionMux.Lock()
+					if subscription != nil {
+						subscription.Request(n)
+					}
+					subscriptionMux.Unlock()
+				},
+			}
+
+			subscriberMux.Lock()
+			subscriber = s
+			subscriber.OnSubscribe(subscription)
+			subscriberMux.Unlock()
+
+			return sub
+		},
+		onSubscribe: func(s cesium.Subscription) {
+			subscriptionMux.Lock()
+			f(SubscribtionSignal(s))
+			subscription = s
+			subscriptionMux.Unlock()
+		},
+		onNext: func(t cesium.T) {
+			f(NextSignal(t))
+			subscriberMux.Lock()
+			subscriber.OnNext(t)
+			subscriberMux.Unlock()
+		},
+		onComplete: func() {
+			f(CompleteSignal())
+			subscriberMux.Lock()
+			subscriber.OnComplete()
+			subscriberMux.Unlock()
+		},
+		onError: func(err error) {
+			f(ErrorSignal(err))
+			subscriberMux.Lock()
+			subscriber.OnError(err)
 			subscriberMux.Unlock()
 		},
 	}

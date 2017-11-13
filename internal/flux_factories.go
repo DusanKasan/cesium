@@ -683,23 +683,21 @@ func FluxGenerate(f func(cesium.SynchronousSink)) cesium.Flux {
 						f(sink)
 
 						if !c.IsCancelled() {
-							emission := sink.GetEmission()
-							switch emission.EventType {
-							case "next":
-								if !s.OnNextIf(emission.Value) {
+							sig := sink.Signal()
+							if sig == nil {
+								s.OnError(cesium.NoEmissionOnSynchronousSinkError)
+								requestedMux.Unlock()
+								return
+							}
+
+							switch sig.Type() {
+							case cesium.SignalTypeOnNext:
+								if !s.OnNextIf(sig.Item()) {
 									requested = requested + 1
 								}
 								requestedMux.Unlock()
-							case "complete":
-								s.OnComplete()
-								requestedMux.Unlock()
-								return
-							case "error":
-								s.OnError(emission.Err)
-								requestedMux.Unlock()
-								return
-							default:
-								s.OnError(cesium.NoEmissionOnSynchronousSinkError)
+							case cesium.SignalTypeOnComplete, cesium.SignalTypeOnError:
+								sig.Accept(s)
 								requestedMux.Unlock()
 								return
 							}
@@ -742,20 +740,16 @@ func FluxGenerate(f func(cesium.SynchronousSink)) cesium.Flux {
 						f(sink)
 
 						if !c.IsCancelled() {
-							emission := sink.GetEmission()
-							switch emission.EventType {
-							case "next":
-								subscriber.OnNext(emission.Value)
-							case "complete":
-								subscriber.OnComplete()
-								requestedMux.Unlock()
-								return
-							case "error":
-								subscriber.OnError(emission.Err)
-								requestedMux.Unlock()
-								return
-							default:
+							sig := sink.Signal()
+							if sig == nil {
 								subscriber.OnError(cesium.NoEmissionOnSynchronousSinkError)
+								requestedMux.Unlock()
+								return
+							}
+
+							sig.Accept(subscriber)
+
+							if sig.IsTerminal() {
 								requestedMux.Unlock()
 								return
 							}

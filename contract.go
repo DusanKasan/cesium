@@ -130,6 +130,7 @@ type Flux interface {
 	DoAfterTerminate(func()) Flux
 	DoFinally(func()) Flux
 	DoOnCancel(func()) Flux
+	DoOnEach(func(Signal)) Flux
 	Log(*log.Logger) Flux
 
 	Handle(func(T, SynchronousSink)) Flux
@@ -172,6 +173,7 @@ type Mono interface {
 	DoAfterTerminate(func()) Mono
 	DoOnCancel(func()) Mono
 	DoFinally(func()) Mono
+	DoOnEach(func(Signal)) Mono
 	Log(*log.Logger) Mono
 
 	Handle(func(T, SynchronousSink)) Mono
@@ -247,14 +249,53 @@ type MonoSink interface {
 	OnDispose(func())
 }
 
-// MaterializedEmission is used in (De)Materialize operator.
-type MaterializedEmission struct {
-	// The type of emission: "next", "complete", "error"
-	EventType string
+type SignalType string
 
-	// If the emission was of type "error" the error will be in this field
-	Err error
+// Represents an onSubscribe signal type in Signal.
+const SignalTypeOnSubscribe SignalType = "onSubscribe"
 
-	// If the emission was of type "next" the item will be in this field.
-	Value T
+// Represents an onNext signal type in Signal.
+const SignalTypeOnNext SignalType = "onNext"
+
+// Represents an onComplete signal type in Signal.
+const SignalTypeOnComplete SignalType = "onComplete"
+
+// Represents an onError signal type in Signal.
+const SignalTypeOnError SignalType = "onError"
+
+// Represents a reactive signal: OnSubscribe, OnNext, OnComplete or OnError.
+type Signal interface {
+	// Propagate the signal represented by this Signal to a given Subscriber.
+	Accept(Subscriber)
+
+	// Retrieves the item associated with this (onNext) signal. If this is not a
+	// onNext signal, this returns nil.
+	Item() T
+
+	// Read the subscription associated with this (onSubscribe) signal. If this
+	// is not a onSubscribe signal, this returns nil.
+	Subscription() Subscription
+
+	// Read the error associated with this (onError) signal. If this is not a
+	// onError signal, this returns nil.
+	Error() error
+
+	// Read the type of this signal.
+	Type() SignalType
+
+	// Indicates whether this signal represents an onSubscribe event.
+	IsOnSubscribe() bool
+
+	// Indicates whether this signal represents an onNext event.
+	IsOnNext() bool
+
+	// Indicates whether this signal represents an onComplete event.
+	IsOnComplete() bool
+
+	// Indicates whether this signal represents an onError event.
+	IsOnError() bool
+
+	// Indicates whether this signal represents an onError or an onComplete
+	// event.
+	IsTerminal() bool
 }

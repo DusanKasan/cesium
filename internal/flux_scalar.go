@@ -75,16 +75,16 @@ func (s *ScalarFlux) Handle(fn func(cesium.T, cesium.SynchronousSink)) cesium.Fl
 
 	sink := &SynchronousSink{}
 	fn(t, sink)
-	emission := sink.GetEmission()
-	switch emission.EventType {
-	case "next":
+	sig := sink.Signal()
+	switch sig.Type() {
+	case cesium.SignalTypeOnNext:
 		return fluxFromCallable(func() (cesium.T, bool) {
-			return emission.Value, true
+			return sig.Item(), true
 		})
-	case "complete":
+	case cesium.SignalTypeOnComplete:
 		return FluxEmpty()
-	case "error":
-		return FluxError(emission.Err)
+	case cesium.SignalTypeOnError:
+		return FluxError(sig.Error())
 	default:
 		return FluxError(cesium.NoEmissionOnSynchronousSinkError)
 	}

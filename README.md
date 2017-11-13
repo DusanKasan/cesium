@@ -6,6 +6,8 @@
 
 This is a port of [Project Reactor](https://projectcesium.io/) into [Go](https://golang.org/). It provides reactive data streams with asynchronous pull backpressure and operator fusion. Its aim is to be as close to the proposed Java API as possible, altering it slightly where needed for it to make sense in Go.
 
+For more information see godocs at: https://godoc.org/github.com/DusanKasan/cesium, https://godoc.org/github.com/DusanKasan/cesium/flux and https://godoc.org/github.com/DusanKasan/cesium/mono.
+
 More documentation to come after all operators are implemented.
 
 ### Naming
@@ -75,74 +77,6 @@ subscription := flux.FromSlice(
 
 subscription.RequestUnbounded() // Publisher will not wait for Request() to emit
 ```
-
-
-### Verifier
-
-In `cesium/verifier` you'll find a testing tool to verify your publishers are behaving correctly. It's designed to be similar to [Reactor Test](https://projectcesium.io/docs/test/release/api/). The fluent API is pretty self explanatory. Here's a small example:
-
-```Go
-func TestMap(t *testing.T) {
-    publisher := flux.
-        FromSlice([]cesium.T{1, 2, 3}).
-        Map(func(a cesium.T) cesium.T {
-            return 10 * a.(int)
-        })
-
-    verifier.
-        Create(publisher).
-        ExpectNext(10, 20, 30).
-        ExpectComplete().
-        Verify(t)
-}
-```
-
-The first step is calling `verifier.Create(cesium.Publisher)` that will return a verifier instance. Then you can specify the expectation and control the underlying subscription. The last call to verify the expectations (all expectation return the verifier instance so we can use fluent API) is `verify(*testing.T)`. Only at this point will the verifier actually subscribe to the publisher and start executing the steps.
-
-#### Verifier methods
-
-After you create the verifier via `verifier.Create(cesium.Publisher)` you can use this methods to specify behaviour and test expectations.
-
-##### AndTimeout(time.Duration)
-
-Specifies the timeout of any expectation after this call. If the expectation isn't satisfied after this duration, an error will be outputted and the subscription will be closed.
-
-##### ExpectNext(...cesium.T)
-
-Will request the specified items from the publisher (only if there are no pending requests) and wait for their arrival. If an unexpected emission would occur, an error outputted throught `testing.T` you supplied to `verify(testing.T)` and any further execution is cancelled.
-
-##### ExpectComplete()
-
-Will wait for OnComplete signal. If an unexpected emission would occur, an error outputted throught `testing.T` you supplied to `verify(testing.T)` and any further execution is cancelled.
-
-##### ExpectError(error)
-
-Will wait for OnError signal with specified error. If an unexpected emission would occur, an error outputted throught `testing.T` you supplied to `verify(testing.T)` and any further execution is cancelled.
-
-##### ExpectNextCount(int64)
-
-Will check if the specified amount of OnNext emissions are received after the last expectation.
-
-##### ThenCancel()
-
-Cancels the underlying subscription.
-
-##### ThenRequest(int64)
-
-Request the specified number of items from the underlying subscription.
-
-##### ThenAwait(time.Duration)
-
-Pause execution for the specified duration.
-
-##### Then(func())
-
-Execute the specified function.
-
-##### Verify(*testing.T)
-
-Subscribe to the publisher and start verifying. Output all messages to the supplied `testing.T`.
-
 
 ### Operator implementation progress
 
@@ -317,3 +251,7 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 - Add schedule periodic and schedule after to schedulers and add ability to insert virtual clock ( this will be useful in tests)
 - How to split up tests for normal and scalar flux/mono?
 - Fix locking for flatMaps
+- Move most docs to godoc, except some examples and "how to choose an operator"
+- transform switch on signal type to accept(sub)
+- NoneSignal()
+- remove p.OnSubscribe(subscription2) from everywhere to avoid double subscribtion

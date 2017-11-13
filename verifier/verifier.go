@@ -40,15 +40,38 @@ func (s *subscription) RequestUnbounded() {
 	s.onRequestUnbounded()
 }
 
+type emissionType string
+
+// Represent an onNext emission type in MaterializedEmission.
+const EventTypeNext emissionType = "next"
+
+// Represent an onComplete emission type in MaterializedEmission.
+const EventTypeComplete emissionType = "complete"
+
+// Represent an onComplete emission type in MaterializedEmission.
+const EventTypeError emissionType = "error"
+
+// MaterializedEmission is used in (De)Materialize operator.
+type MaterializedEmission struct {
+	// The type of emission, EventTypeNext, EventTypeComplete, EventTypeError
+	EventType emissionType
+
+	// If the emission was of type "error" the error will be in this field
+	Err error
+
+	// If the emission was of type "next" the item will be in this field.
+	Value cesium.T
+}
+
 type bufferObserver struct {
-	buffer       []cesium.MaterializedEmission
+	buffer       []MaterializedEmission
 	subscription cesium.Subscription
 	mux          sync.Mutex
 }
 
 func (o *bufferObserver) OnNext(t cesium.T) {
 	o.mux.Lock()
-	o.buffer = append(o.buffer, cesium.MaterializedEmission{
+	o.buffer = append(o.buffer, MaterializedEmission{
 		EventType: "next",
 		Value:     t,
 	})
@@ -57,7 +80,7 @@ func (o *bufferObserver) OnNext(t cesium.T) {
 
 func (o *bufferObserver) OnComplete() {
 	o.mux.Lock()
-	o.buffer = append(o.buffer, cesium.MaterializedEmission{
+	o.buffer = append(o.buffer, MaterializedEmission{
 		EventType: "complete",
 	})
 	o.mux.Unlock()
@@ -65,7 +88,7 @@ func (o *bufferObserver) OnComplete() {
 
 func (o *bufferObserver) OnError(err error) {
 	o.mux.Lock()
-	o.buffer = append(o.buffer, cesium.MaterializedEmission{
+	o.buffer = append(o.buffer, MaterializedEmission{
 		EventType: "error",
 		Err:       err,
 	})
@@ -86,8 +109,8 @@ func (o *bufferObserver) GetSubscription() cesium.Subscription {
 	return s
 }
 
-func (o *bufferObserver) Pop() *cesium.MaterializedEmission {
-	var emission *cesium.MaterializedEmission
+func (o *bufferObserver) Pop() *MaterializedEmission {
+	var emission *MaterializedEmission
 
 	o.mux.Lock()
 	if len(o.buffer) > 0 {
@@ -119,7 +142,7 @@ func (o *bufferObserver) BufferedNextCount() int {
 
 func (o *bufferObserver) PurgeBuffer() {
 	o.mux.Lock()
-	o.buffer = []cesium.MaterializedEmission{}
+	o.buffer = []MaterializedEmission{}
 	o.mux.Unlock()
 }
 
@@ -302,7 +325,7 @@ func (sv *StepVerifier) Verify(t *testing.T) {
 			}
 		}
 
-		var emission *cesium.MaterializedEmission
+		var emission *MaterializedEmission
 
 		for emission == nil {
 			mux.Lock()
@@ -342,7 +365,7 @@ func (sv *StepVerifier) Verify(t *testing.T) {
 	}
 }
 
-func compareExpectationAndEmission(expected expectation, actual cesium.MaterializedEmission, t *testing.T) bool {
+func compareExpectationAndEmission(expected expectation, actual MaterializedEmission, t *testing.T) bool {
 	switch expected.expectationType {
 	case "next":
 		if actual.EventType != "next" {

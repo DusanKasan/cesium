@@ -854,3 +854,26 @@ func (f *Flux) OnErrorReturn(fallbackValue cesium.T) cesium.Flux {
 
 	return &Flux{onPublish}
 }
+
+func (f *Flux) DoOnEach(fn func(cesium.Signal)) cesium.Flux {
+	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
+		p := DoOnEachProcessor(fn)
+
+		subscription1 := p.Subscribe(subscriber)
+		subscription2 := f.OnSubscribe(p, scheduler)
+		sub := &Subscription{
+			CancelFunc: func() {
+				subscription1.Cancel()
+				subscription2.Cancel()
+			},
+			RequestFunc: func(n int64) {
+				subscription1.Request(n)
+			},
+		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
+	}
+
+	return &Flux{onPublish}
+}

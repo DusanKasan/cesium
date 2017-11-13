@@ -138,7 +138,7 @@ func BufferFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
 	scheduler := SeparateGoroutineScheduler()
 
 	bufferMux := sync.Mutex{}
-	buffer := []cesium.MaterializedEmission{}
+	buffer := []cesium.Signal{}
 
 	requestedMux := sync.Mutex{}
 	requested := int64(0)
@@ -170,7 +170,7 @@ func BufferFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
 			requestedMux.Unlock()
 
 			bufferMux.Lock()
-			buffer = append(buffer, cesium.MaterializedEmission{EventType: "next", Value: t})
+			buffer = append(buffer, NextSignal(t))
 			bufferMux.Unlock()
 		},
 		complete: func() {
@@ -203,7 +203,7 @@ func BufferFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
 					s.OnComplete()
 				})
 			} else {
-				buffer = append(buffer, cesium.MaterializedEmission{EventType: "complete"})
+				buffer = append(buffer, CompleteSignal())
 			}
 			bufferMux.Unlock()
 		},
@@ -237,7 +237,7 @@ func BufferFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
 					s.OnError(err)
 				})
 			} else {
-				buffer = append(buffer, cesium.MaterializedEmission{EventType: "error", Err: err})
+				buffer = append(buffer, ErrorSignal(err))
 			}
 			bufferMux.Unlock()
 		},
@@ -258,23 +258,12 @@ func BufferFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
 			if unbounded {
 				bufferMux.Lock()
 				for len(buffer) > 0 {
-					emission := buffer[0]
+					sig := buffer[0]
 					buffer = buffer[1:]
 
-					switch emission.EventType {
-					case "next":
-						scheduler.Schedule(func(c cesium.Canceller) {
-							s.OnNext(emission.Value)
-						})
-					case "complete":
-						scheduler.Schedule(func(c cesium.Canceller) {
-							s.OnComplete()
-						})
-					case "error":
-						scheduler.Schedule(func(c cesium.Canceller) {
-							s.OnError(emission.Err)
-						})
-					}
+					scheduler.Schedule(func(c cesium.Canceller) {
+						sig.Accept(s)
+					})
 				}
 				bufferMux.Unlock()
 				requestedMux.Unlock()
@@ -284,39 +273,23 @@ func BufferFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
 			requested = requested + n
 			bufferMux.Lock()
 			for len(buffer) > 0 && requested > 0 {
-				emission := buffer[0]
+				sig := buffer[0]
 				buffer = buffer[1:]
 				requested = requested - 1
 
-				switch emission.EventType {
-				case "next":
-					scheduler.Schedule(func(c cesium.Canceller) {
-						s.OnNext(emission.Value)
-					})
-				case "complete":
-					scheduler.Schedule(func(c cesium.Canceller) {
-						s.OnComplete()
-					})
-				case "error":
-					scheduler.Schedule(func(c cesium.Canceller) {
-						s.OnError(emission.Err)
-					})
-				}
+				scheduler.Schedule(func(c cesium.Canceller) {
+					sig.Accept(s)
+				})
 			}
 
 			if len(buffer) == 1 {
-				emission := buffer[0]
-				switch emission.EventType {
-				case "complete":
+				sig := buffer[0]
+
+				if sig.IsTerminal() {
 					scheduler.Schedule(func(c cesium.Canceller) {
-						s.OnComplete()
+						sig.Accept(s)
 					})
-					buffer = []cesium.MaterializedEmission{}
-				case "error":
-					scheduler.Schedule(func(c cesium.Canceller) {
-						s.OnError(emission.Err)
-					})
-					buffer = []cesium.MaterializedEmission{}
+					buffer = []cesium.Signal{}
 				}
 			}
 			bufferMux.Unlock()
@@ -529,7 +502,7 @@ func IgnoreFluxSink(s cesium.Subscriber, c cesium.Canceller) *FluxSink {
 type SynchronousSink struct {
 	emitted    bool
 	emittedMux sync.Mutex
-	emission   cesium.MaterializedEmission
+	emission   cesium.Signal
 }
 
 func (s *SynchronousSink) Next(t cesium.T) {
@@ -541,7 +514,7 @@ func (s *SynchronousSink) Next(t cesium.T) {
 	s.emitted = true
 	s.emittedMux.Unlock()
 
-	s.emission = cesium.MaterializedEmission{EventType: "next", Value: t}
+	s.emission = &signal{signalType: cesium.SignalTypeOnNext, item: t}
 }
 
 func (s *SynchronousSink) Complete() {
@@ -553,7 +526,7 @@ func (s *SynchronousSink) Complete() {
 	s.emitted = true
 	s.emittedMux.Unlock()
 
-	s.emission = cesium.MaterializedEmission{EventType: "complete"}
+	s.emission = &signal{signalType: cesium.SignalTypeOnComplete}
 }
 
 func (s *SynchronousSink) Error(err error) {
@@ -565,10 +538,10 @@ func (s *SynchronousSink) Error(err error) {
 	s.emitted = true
 	s.emittedMux.Unlock()
 
-	s.emission = cesium.MaterializedEmission{EventType: "error", Err: err}
+	s.emission = &signal{signalType: cesium.SignalTypeOnError, err: err}
 }
 
-func (s *SynchronousSink) GetEmission() cesium.MaterializedEmission {
+func (s *SynchronousSink) Signal() cesium.Signal {
 	return s.emission
 }
 
@@ -695,7 +668,7 @@ func (f *MonoSink) Request(n int64) {
 
 func BufferMonoSink(s cesium.Subscriber, c cesium.Canceller) *MonoSink {
 	mux := sync.Mutex{}
-	buffer := []cesium.MaterializedEmission{}
+	var buffer []cesium.Signal
 	requested := false
 
 	ms := &MonoSink{
@@ -717,7 +690,7 @@ func BufferMonoSink(s cesium.Subscriber, c cesium.Canceller) *MonoSink {
 				return
 			}
 
-			buffer = append(buffer, cesium.MaterializedEmission{EventType: "next", Value: t}, cesium.MaterializedEmission{EventType: "complete"})
+			buffer = append(buffer, NextSignal(t), CompleteSignal())
 			mux.Unlock()
 		},
 		complete: func() {
@@ -737,7 +710,7 @@ func BufferMonoSink(s cesium.Subscriber, c cesium.Canceller) *MonoSink {
 				return
 			}
 
-			buffer = append(buffer, cesium.MaterializedEmission{EventType: "complete"})
+			buffer = append(buffer, CompleteSignal())
 			mux.Unlock()
 		},
 		error: func(err error) {
@@ -757,7 +730,7 @@ func BufferMonoSink(s cesium.Subscriber, c cesium.Canceller) *MonoSink {
 				return
 			}
 
-			buffer = append(buffer, cesium.MaterializedEmission{EventType: "error", Err: err})
+			buffer = append(buffer, ErrorSignal(err))
 			mux.Unlock()
 		},
 		internalRequest: func(n int64) {
@@ -771,25 +744,25 @@ func BufferMonoSink(s cesium.Subscriber, c cesium.Canceller) *MonoSink {
 				emission := buffer[0]
 				buffer = buffer[1:]
 
-				switch emission.EventType {
-				case "next":
+				switch emission.Type() {
+				case cesium.SignalTypeOnNext:
 					if c.IsCancelled() {
 						mux.Unlock()
 						return
 					}
-					s.OnNext(emission.Value)
-				case "complete":
+					s.OnNext(emission.Item())
+				case cesium.SignalTypeOnComplete:
 					if c.IsCancelled() {
 						mux.Unlock()
 						return
 					}
 					s.OnComplete()
-				case "error":
+				case cesium.SignalTypeOnError:
 					if c.IsCancelled() {
 						mux.Unlock()
 						return
 					}
-					s.OnError(emission.Err)
+					s.OnError(emission.Error())
 				}
 			}
 			requested = true

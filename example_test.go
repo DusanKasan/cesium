@@ -3,7 +3,6 @@ package cesium
 import (
 	"log"
 	"os"
-
 	"time"
 
 	"github.com/DusanKasan/cesium/flux"
