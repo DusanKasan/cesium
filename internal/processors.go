@@ -1394,20 +1394,20 @@ func DoOnEachProcessor(f func(cesium.Signal)) cesium.Processor {
 			subscriptionMux.Unlock()
 		},
 		onNext: func(t cesium.T) {
-			f(NextSignal(t))
 			subscriberMux.Lock()
+			f(NextSignal(t))
 			subscriber.OnNext(t)
 			subscriberMux.Unlock()
 		},
 		onComplete: func() {
-			f(CompleteSignal())
 			subscriberMux.Lock()
+			f(CompleteSignal())
 			subscriber.OnComplete()
 			subscriberMux.Unlock()
 		},
 		onError: func(err error) {
-			f(ErrorSignal(err))
 			subscriberMux.Lock()
+			f(ErrorSignal(err))
 			subscriber.OnError(err)
 			subscriberMux.Unlock()
 		},
