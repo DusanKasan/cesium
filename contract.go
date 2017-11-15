@@ -132,6 +132,8 @@ type Flux interface {
 	DoOnCancel(func()) Flux
 	DoOnEach(func(Signal)) Flux
 	Log(*log.Logger) Flux
+	Materialize() Flux /*<Signal>*/
+	Dematerialize() Flux
 
 	Handle(func(T, SynchronousSink)) Flux
 
@@ -161,6 +163,8 @@ type Mono interface {
 	Map(func(T) T) Mono
 	FlatMap(fn func(T) Mono, scheduler ...Scheduler) Mono
 	FlatMapMany(fn func(T) Publisher, scheduler ...Scheduler) Flux
+	Handle(func(T, SynchronousSink)) Mono
+	ConcatWith(...Publisher) Flux
 
 	Filter(func(T) bool) Mono
 
@@ -175,10 +179,8 @@ type Mono interface {
 	DoFinally(func()) Mono
 	DoOnEach(func(Signal)) Mono
 	Log(*log.Logger) Mono
-
-	Handle(func(T, SynchronousSink)) Mono
-
-	ConcatWith(...Publisher) Flux
+	Materialize() Mono /*<Signal>*/
+	Dematerialize() Mono
 
 	OnErrorReturn(T) Mono
 

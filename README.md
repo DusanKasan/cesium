@@ -163,8 +163,8 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 - [x] DoFinally(func())
 - [x] Log(log.Logger)
 - [x] DoOnEach
-- [ ] Materialize
-- [ ] Dematerialize
+- [x] Materialize
+- [x] Dematerialize
 
 #### Filtering
 

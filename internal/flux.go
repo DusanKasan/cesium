@@ -877,3 +877,49 @@ func (f *Flux) DoOnEach(fn func(cesium.Signal)) cesium.Flux {
 
 	return &Flux{onPublish}
 }
+
+func (f *Flux) Materialize() cesium.Flux {
+	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
+		p := MaterializeProcessor()
+
+		subscription1 := p.Subscribe(subscriber)
+		subscription2 := f.OnSubscribe(p, scheduler)
+		sub := &Subscription{
+			CancelFunc: func() {
+				subscription1.Cancel()
+				subscription2.Cancel()
+			},
+			RequestFunc: func(n int64) {
+				subscription1.Request(n)
+			},
+		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
+	}
+
+	return &Flux{onPublish}
+}
+
+func (f *Flux) Dematerialize() cesium.Flux {
+	onPublish := func(subscriber cesium.Subscriber, scheduler cesium.Scheduler) cesium.Subscription {
+		p := DematerializeProcessor()
+
+		subscription1 := p.Subscribe(subscriber)
+		subscription2 := f.OnSubscribe(p, scheduler)
+		sub := &Subscription{
+			CancelFunc: func() {
+				subscription1.Cancel()
+				subscription2.Cancel()
+			},
+			RequestFunc: func(n int64) {
+				subscription1.Request(n)
+			},
+		}
+
+		subscriber.OnSubscribe(sub)
+		return sub
+	}
+
+	return &Flux{onPublish}
+}

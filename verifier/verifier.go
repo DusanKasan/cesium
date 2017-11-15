@@ -234,6 +234,16 @@ func (sv *StepVerifier) ExpectNextCount(i int) *StepVerifier {
 	return sv
 }
 
+// Expects the callback to return true for the next item.
+func (sv *StepVerifier) ExpectNextMatches(f func(cesium.T) bool) *StepVerifier {
+	sv.expectations = append(sv.expectations, expectation{
+		expectationType: "nextMatches",
+		value:           f,
+	})
+
+	return sv
+}
+
 // Execute the passed function.
 func (sv *StepVerifier) Then(f func()) *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
@@ -318,7 +328,7 @@ func (sv *StepVerifier) Verify(t *testing.T) {
 			previousNextBufferedCount = observer.BufferedNextCount()
 
 			continue
-		case "next":
+		case "next", "nextMatches":
 			if pendingRequests == 0 {
 				pendingRequests = 1
 				subs.Request(1)
@@ -367,6 +377,16 @@ func (sv *StepVerifier) Verify(t *testing.T) {
 
 func compareExpectationAndEmission(expected expectation, actual MaterializedEmission, t *testing.T) bool {
 	switch expected.expectationType {
+	case "nextMatches":
+		if actual.EventType != "next" {
+			t.Errorf("Invalid emission type! Expected: %v, Got: %v", "next", actual.EventType)
+			return false
+		}
+
+		if !expected.value.(func(cesium.T) bool)(actual.Value) {
+			t.Errorf("ExpectNextMatches returned false for %v", actual.Value)
+			return false
+		}
 	case "next":
 		if actual.EventType != "next" {
 			t.Errorf("Invalid emission type! Expected: %v, Got: %v", "next", actual.EventType)

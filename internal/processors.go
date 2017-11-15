@@ -1413,3 +1413,132 @@ func DoOnEachProcessor(f func(cesium.Signal)) cesium.Processor {
 		},
 	}
 }
+
+func MaterializeProcessor() cesium.Processor {
+	var subscriber cesium.Subscriber
+	var subscription cesium.Subscription
+	subscriberMux := sync.Mutex{}
+	subscriptionMux := sync.Mutex{}
+
+	return &processor{
+		subscribe: func(s cesium.Subscriber) cesium.Subscription {
+			sub := &Subscription{
+				CancelFunc: func() {
+					subscriptionMux.Lock()
+					if subscription != nil {
+						subscription.Cancel()
+					}
+					subscriptionMux.Unlock()
+				},
+				RequestFunc: func(n int64) {
+					subscriptionMux.Lock()
+					if subscription != nil {
+						subscription.Request(n)
+					}
+					subscriptionMux.Unlock()
+				},
+			}
+
+			subscriberMux.Lock()
+			subscriber = s
+			subscriber.OnSubscribe(subscription)
+			subscriberMux.Unlock()
+
+			return sub
+		},
+		onSubscribe: func(s cesium.Subscription) {
+			subscriptionMux.Lock()
+			subscription = s
+			subscriptionMux.Unlock()
+		},
+		onNext: func(t cesium.T) {
+			subscriberMux.Lock()
+			subscriber.OnNext(NextSignal(t))
+			subscriberMux.Unlock()
+		},
+		onComplete: func() {
+			subscriberMux.Lock()
+			subscriber.OnNext(CompleteSignal())
+			subscriber.OnComplete()
+			subscriberMux.Unlock()
+		},
+		onError: func(err error) {
+			subscriberMux.Lock()
+			subscriber.OnNext(ErrorSignal(err))
+			subscriber.OnComplete()
+			subscriberMux.Unlock()
+		},
+	}
+}
+
+func DematerializeProcessor() cesium.Processor {
+	var subscriber cesium.Subscriber
+	var subscription cesium.Subscription
+	subscriberMux := sync.Mutex{}
+	subscriptionMux := sync.Mutex{}
+
+	completed := false
+
+	return &processor{
+		subscribe: func(s cesium.Subscriber) cesium.Subscription {
+			sub := &Subscription{
+				CancelFunc: func() {
+					subscriptionMux.Lock()
+					if subscription != nil {
+						subscription.Cancel()
+					}
+					subscriptionMux.Unlock()
+				},
+				RequestFunc: func(n int64) {
+					subscriptionMux.Lock()
+					if subscription != nil {
+						subscription.Request(n)
+					}
+					subscriptionMux.Unlock()
+				},
+			}
+
+			subscriberMux.Lock()
+			subscriber = s
+			subscriber.OnSubscribe(subscription)
+			subscriberMux.Unlock()
+
+			return sub
+		},
+		onSubscribe: func(s cesium.Subscription) {
+			subscriptionMux.Lock()
+			subscription = s
+			subscriptionMux.Unlock()
+		},
+		onNext: func(t cesium.T) {
+			subscriberMux.Lock()
+			if completed {
+				subscriberMux.Unlock()
+				return
+			}
+
+			t.(cesium.Signal).Accept(subscriber)
+			subscriberMux.Unlock()
+		},
+		onComplete: func() {
+			subscriberMux.Lock()
+			if completed {
+				subscriberMux.Unlock()
+				return
+			}
+
+			subscriber.OnComplete()
+			subscriberMux.Unlock()
+		},
+		onError: func(err error) {
+			subscriberMux.Lock()
+			if completed {
+				subscriberMux.Unlock()
+				return
+			}
+
+			subscriber.OnError(err)
+			subscriberMux.Unlock()
+		},
+	}
+}
