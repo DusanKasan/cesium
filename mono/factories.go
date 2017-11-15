@@ -57,6 +57,9 @@ func Create(f func(cesium.MonoSink)) cesium.Mono {
 	return internal.MonoCreate(f)
 }
 
+// FromChannel creates a Mono from a channel that emits the first item from a
+// channel and then closes. If the channel is closed before emitting any items
+// the returned Mono just completes.
 func FromChannel(c <-chan cesium.T) cesium.Mono {
 	return internal.MonoFromChannel(c)
 }

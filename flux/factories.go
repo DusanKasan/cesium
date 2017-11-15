@@ -56,6 +56,8 @@ func Create(f func(cesium.FluxSink), os overflowStrategy) cesium.Flux {
 	return internal.FluxCreate(f, internal.OverflowStrategy(os))
 }
 
+// Programmatically create a cesium.Flux by generating signals one-by-one when
+// they are requested.
 func Generate(f func(cesium.SynchronousSink)) cesium.Flux {
 	return internal.FluxGenerate(f)
 }
@@ -71,6 +73,8 @@ func Error(err error) cesium.Flux {
 	return internal.FluxError(err)
 }
 
+// FromChannel creates a Flux from a channel that emits items from the channel
+// and completes when the channel closes.
 func FromChannel(c <-chan cesium.T) cesium.Flux {
 	return internal.FluxFromChannel(c)
 }

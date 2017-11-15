@@ -104,7 +104,7 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 #### Transforming
 - [x] Map(func(T) T)
 - [ ] Cast
-- [ ] FlatMap
+- [x] FlatMap
 - [x] Handle(func(T, SynchronousSink))
 - [ ] Flux.FlatMapSequential
 - [ ] Mono.FlatMapMany
@@ -173,7 +173,7 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 - [ ] OfType
 - [ ] Flux.Distinct
 - [x] Flux.DistinctUntilChanged
-- [ ] Flux.Take
+- [x] Flux.Take
 - [ ] Flux.TakeInPeriod
 - [ ] Flux.Next
 - [ ] Flux.LimitRequest
@@ -258,3 +258,4 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 - transform switch on signal type to accept(sub)
 - NoneSignal()
 - remove p.OnSubscribe(subscription2) from everywhere to avoid double subscribtion
+- at least 1 godoc example per factory function

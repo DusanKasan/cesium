@@ -1,8 +1,12 @@
-// Cesium is a general purpose 4th generation  non-blocking reactive library
+// Cesium is a general purpose 4th generation non-blocking reactive library
 // that offers efficient demand management (in the form of managing
 // "backpressure").  It offers composable asynchronous sequence APIs Flux (for
 // [N] elements) and Mono (for [0|1] elements), extensively implementing the
 // Reactive Extensions specification where possible.
+//
+// The factory functions to instantiate Flux/Mono are located in the flux and
+// mono subpackages (see examples for usage). This is so that the usage is
+// cleaner and easier to understand.
 //
 // Cesium also ships with a testing framework under cesium/verifier that allows
 // you to test your reactive code easily.
@@ -114,11 +118,17 @@ type Canceller interface {
 type Flux interface {
 	Publisher
 
-	Filter(func(T) bool) Flux
-	DistinctUntilChanged() Flux
-	Take(int64) Flux
-
 	Map(func(T) T) Flux
+	Handle(func(T, SynchronousSink)) Flux
+	Count() Mono
+	Reduce(func(T, T) T) Mono
+	Scan(func(T, T) T) Flux
+	All(func(T) bool) Mono
+	Any(func(T) bool) Mono
+	HasElements() Mono
+	HasElement(T) Mono
+	Concat(Publisher /*<cesium.Publisher>*/) Flux
+	ConcatWith(...Publisher) Flux
 	FlatMap(func(T) Publisher, ...Scheduler) Flux
 
 	DoOnSubscribe(func(Subscription)) Flux
@@ -135,17 +145,9 @@ type Flux interface {
 	Materialize() Flux /*<Signal>*/
 	Dematerialize() Flux
 
-	Handle(func(T, SynchronousSink)) Flux
-
-	Count() Mono
-	Reduce(func(T, T) T) Mono
-	Scan(func(T, T) T) Flux
-	All(func(T) bool) Mono
-	Any(func(T) bool) Mono
-	HasElements() Mono
-	HasElement(T) Mono
-	Concat(Publisher /*<cesium.Publisher>*/) Flux
-	ConcatWith(...Publisher) Flux
+	Filter(func(T) bool) Flux
+	DistinctUntilChanged() Flux
+	Take(int64) Flux
 
 	OnErrorReturn(T) Flux
 
