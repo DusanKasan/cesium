@@ -37,7 +37,6 @@ func (f *Flux) DoFinally(fn func()) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -66,7 +65,6 @@ func (f *Flux) Reduce(fn func(cesium.T, cesium.T) cesium.T) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -91,7 +89,6 @@ func (f *Flux) Scan(fn func(cesium.T, cesium.T) cesium.T) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -116,7 +113,6 @@ func (f *Flux) All(fn func(cesium.T) bool) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -166,7 +162,6 @@ func (f *Flux) HasElements() cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -193,7 +188,6 @@ func (f *Flux) HasElement(element cesium.T) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -236,7 +230,6 @@ func (f *Flux) Log(logger *log.Logger) cesium.Flux {
 		logger.Printf("Subscribed")
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -268,7 +261,6 @@ func (f *Flux) DoOnNext(fn func(cesium.T)) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -302,7 +294,6 @@ func (f *Flux) DoOnError(fn func(error)) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -336,7 +327,6 @@ func (f *Flux) DoOnCancel(fn func()) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -370,7 +360,6 @@ func (f *Flux) DoOnSubscribe(fn func(cesium.Subscription)) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -404,7 +393,6 @@ func (f *Flux) DoOnRequest(fn func(int64)) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -440,7 +428,6 @@ func (f *Flux) DoOnTerminate(fn func()) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -474,7 +461,6 @@ func (f *Flux) DoOnComplete(fn func()) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -499,7 +485,6 @@ func (f *Flux) DoAfterTerminate(fn func()) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -524,7 +509,6 @@ func (f *Flux) Handle(fn func(cesium.T, cesium.SynchronousSink)) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -549,7 +533,6 @@ func (f *Flux) Concat(publishers cesium.Publisher /*<cesium.Publisher>*/) cesium
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -579,7 +562,6 @@ func (f *Flux) ConcatWith(publishers ...cesium.Publisher) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -604,7 +586,6 @@ func (f *Flux) DistinctUntilChanged() cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -629,7 +610,6 @@ func (f *Flux) Take(n int64) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -659,7 +639,6 @@ func (f *Flux) FlatMap(fn func(cesium.T) cesium.Publisher, scheduler ...cesium.S
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, s)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -836,7 +815,6 @@ func (f *Flux) OnErrorReturn(fallbackValue cesium.T) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := f.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -922,4 +900,60 @@ func (f *Flux) Dematerialize() cesium.Flux {
 	}
 
 	return &Flux{onPublish}
+}
+
+func (f *Flux) ToSlice() ([]cesium.T, error) {
+	var buffer []cesium.T
+
+	c := make(chan error)
+	once := sync.Once{}
+
+	sub := f.Subscribe(DoObserver(
+		func(t cesium.T) {
+			buffer = append(buffer, t)
+		},
+		func() {
+			once.Do(func() {
+				c <- nil
+			})
+		},
+		func(e error) {
+			once.Do(func() {
+				c <- e
+			})
+		},
+	))
+
+	sub.RequestUnbounded()
+
+	select {
+	case err := <-c:
+		return buffer, err
+	}
+}
+
+func (f *Flux) ToChannel() (<-chan cesium.T, <-chan error) {
+	items := make(chan cesium.T)
+	errs := make(chan error)
+
+	var sub cesium.Subscription
+	sub = f.Subscribe(DoObserver(
+		func(t cesium.T) {
+			items <- t
+			sub.Request(1)
+		},
+		func() {
+			close(items)
+			close(errs)
+		},
+		func(e error) {
+			errs <- e
+			close(items)
+			close(errs)
+		},
+	))
+
+	sub.Request(1)
+
+	return items, errs
 }

@@ -1,7 +1,8 @@
-// Package verifier contains the StepVerifier type which provides a declarative
-// way of creating a verifiable script for an async Publisher sequence, by
-// expressing expectations about the events that will happen upon subscription.
-// The verification is triggered by calling the verify(*testing.T) method.
+// Package verifier provides means to test your reactive code. It contains the
+// StepVerifier type which provides a declarative way of creating a verifiable
+// script for an async Publisher sequence, by expressing expectations about the
+// events that will happen upon subscription. The verification is triggered by
+// calling the verify(*testing.T) method.
 package verifier
 
 import (
@@ -42,18 +43,9 @@ func (s *subscription) RequestUnbounded() {
 
 type emissionType string
 
-// Represent an onNext emission type in MaterializedEmission.
-const EventTypeNext emissionType = "next"
-
-// Represent an onComplete emission type in MaterializedEmission.
-const EventTypeComplete emissionType = "complete"
-
-// Represent an onComplete emission type in MaterializedEmission.
-const EventTypeError emissionType = "error"
-
 // MaterializedEmission is used in (De)Materialize operator.
 type MaterializedEmission struct {
-	// The type of emission, EventTypeNext, EventTypeComplete, EventTypeError
+	// The type of emission, eventTypeNext, eventTypeComplete, eventTypeError
 	EventType emissionType
 
 	// If the emission was of type "error" the error will be in this field
@@ -146,25 +138,27 @@ func (o *bufferObserver) PurgeBuffer() {
 	o.mux.Unlock()
 }
 
+// StepVerifier serves as a testing framework for reactive code.
 type StepVerifier struct {
 	publisher    cesium.Publisher
 	expectations []expectation
 	timeout      time.Duration
 }
 
-// Creates a step verifier around the passed Publisher.
+// Create creates a step verifier around the passed Publisher.
 func Create(p cesium.Publisher) *StepVerifier {
 	return &StepVerifier{publisher: p, timeout: time.Millisecond * 200}
 }
 
-// Specifies a timeout for the expectations to come.
+// AndTimeout specifies a timeout for the expectations to come.
 func (sv *StepVerifier) AndTimeout(duration time.Duration) *StepVerifier {
 	sv.timeout = duration
 
 	return sv
 }
 
-// Expect the specified items to be emitted. Handles the requesting internally.
+// ExpectNext adds an expectation that expects the specified items to be emitted.
+// Handles the requesting internally.
 func (sv *StepVerifier) ExpectNext(items ...cesium.T) *StepVerifier {
 	for _, i := range items {
 		sv.expectations = append(sv.expectations, expectation{
@@ -176,7 +170,7 @@ func (sv *StepVerifier) ExpectNext(items ...cesium.T) *StepVerifier {
 	return sv
 }
 
-// Expect complete signal to be emitted.
+// ExpectComplete adds an expectation that expects complete signal to be emitted.
 func (sv *StepVerifier) ExpectComplete() *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "complete",
@@ -185,7 +179,8 @@ func (sv *StepVerifier) ExpectComplete() *StepVerifier {
 	return sv
 }
 
-// Expect error signal with the specified error to be emitted.
+// ExpectError adds an expectation that expects an error signal with the
+// specified error to be emitted.
 func (sv *StepVerifier) ExpectError(err error) *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "error",
@@ -195,7 +190,7 @@ func (sv *StepVerifier) ExpectError(err error) *StepVerifier {
 	return sv
 }
 
-// Cancel the underlying subscription.
+// ThenCancel cancels the underlying subscription.
 func (sv *StepVerifier) ThenCancel() *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "cancel",
@@ -204,7 +199,7 @@ func (sv *StepVerifier) ThenCancel() *StepVerifier {
 	return sv
 }
 
-// Wait for the specified duration before executing next expectation.
+// ThenAwait waits for the specified duration before executing next expectation.
 func (sv *StepVerifier) ThenAwait(duration time.Duration) *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "await",
@@ -214,7 +209,7 @@ func (sv *StepVerifier) ThenAwait(duration time.Duration) *StepVerifier {
 	return sv
 }
 
-// Request the specified amount of items from the underlying subscription.
+// ThenRequest requests the specified amount of items from the underlying subscription.
 func (sv *StepVerifier) ThenRequest(i int64) *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "request",
@@ -224,7 +219,8 @@ func (sv *StepVerifier) ThenRequest(i int64) *StepVerifier {
 	return sv
 }
 
-// Checks the specified amount of items to be emitted.
+// ExpectNextCount checks if the specified amount of items were emitted from the
+// last expectation.
 func (sv *StepVerifier) ExpectNextCount(i int) *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "nextCount",
@@ -234,7 +230,8 @@ func (sv *StepVerifier) ExpectNextCount(i int) *StepVerifier {
 	return sv
 }
 
-// Expects the callback to return true for the next item.
+// ExpectNextMatches adds an expectation that expects the callback to return
+// true for the next item.
 func (sv *StepVerifier) ExpectNextMatches(f func(cesium.T) bool) *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "nextMatches",
@@ -244,7 +241,7 @@ func (sv *StepVerifier) ExpectNextMatches(f func(cesium.T) bool) *StepVerifier {
 	return sv
 }
 
-// Execute the passed function.
+// Then executes the passed function.
 func (sv *StepVerifier) Then(f func()) *StepVerifier {
 	sv.expectations = append(sv.expectations, expectation{
 		expectationType: "then",
@@ -254,7 +251,7 @@ func (sv *StepVerifier) Then(f func()) *StepVerifier {
 	return sv
 }
 
-// Subscribe to the underlying publisher and start executing the expectation
+// Verify subscribes to the underlying publisher and start executing the expectation
 // chain. Output the errors to the passed T.
 func (sv *StepVerifier) Verify(t *testing.T) {
 	observer := &bufferObserver{}

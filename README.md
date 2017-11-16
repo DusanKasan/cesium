@@ -2,7 +2,7 @@
 
 ** This library is a work in progress **
 
-[![Coverage Status](https://coveralls.io/repos/github/DusanKasan/cesium/badge.svg?branch=master)](https://coveralls.io/github/DusanKasan/cesium?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/DusanKasan/cesium)](https://goreportcard.com/report/github.com/DusanKasan/cesium) [![CircleCI](https://circleci.com/gh/DusanKasan/cesium.svg?style=shield)](https://circleci.com/gh/DusanKasan/cesium)
+[![Coverage Status](https://coveralls.io/repos/github/DusanKasan/cesium/badge.svg?branch=master)](https://coveralls.io/github/DusanKasan/cesium?branch=master) [![Go Report Card](https://goreportcard.com/badge/github.com/DusanKasan/cesium)](https://goreportcard.com/report/github.com/DusanKasan/cesium) [![CircleCI](https://circleci.com/gh/DusanKasan/cesium.svg?style=shield)](https://circleci.com/gh/DusanKasan/cesium) [![GoDoc](https://godoc.org/github.com/DusanKasan/cesium?status.svg)](https://godoc.org/github.com/DusanKasan/cesium)
 
 This is a port of [Project Reactor](https://projectcesium.io/) into [Go](https://golang.org/). It provides reactive data streams with asynchronous pull backpressure and operator fusion. Its aim is to be as close to the proposed Java API as possible, altering it slightly where needed for it to make sense in Go.
 
@@ -107,24 +107,21 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 - [x] FlatMap
 - [x] Handle(func(T, SynchronousSink))
 - [ ] Flux.FlatMapSequential
-- [ ] Mono.FlatMapMany
-- [ ] Flux.ToSlice
+- [x] Mono.FlatMapMany
+- [x] Flux.ToSlice
     - Maybe ToList (LinkedList would be better to handle large datasets)
 - [ ] Flux.ToSortedSlice
 - [ ] Flux.ToMap
-- [ ] Flux.ToChannel
+- [x] Flux.ToChannel
 - [x] Flux.Count()
 - [x] Flux.Reduce(func(T, T) T)
-- [ ] Flux.ReduceWithInitial
 - [x] Flux.Scan(func(T, T) T)
-- [ ] Flux.ScanWithInitial
 - [x] Flux.All(func(T) bool)
 - [x] Flux.Any(func(T) bool)
 - [x] Flux.HasElements()
 - [x] Flux.HasElement(T) Flux
 - [x] Flux.Concat(Publisher<Publisher>) Flux
 - [x] ConcatWith(Publisher) Flux
-- [ ] ConcatWith
 - [ ] Flux.ConcatDelayError
 - [ ] Flux.MergeSequential
 - [ ] Flux.Merge
@@ -134,7 +131,7 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 - [ ] Mono.And
 - [ ] Mono.When
 - [ ] Flux.CombineLatest
-- [ ] First
+- [ ] First (implement before Or)
 - [ ] Or
 - [ ] SwitchMap
 - [ ] SwitchOnNext
@@ -255,7 +252,5 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 - How to split up tests for normal and scalar flux/mono?
 - Fix locking for flatMaps
 - Move most docs to godoc, except some examples and "how to choose an operator"
-- transform switch on signal type to accept(sub)
-- NoneSignal()
-- remove p.OnSubscribe(subscription2) from everywhere to avoid double subscribtion
-- at least 1 godoc example per factory function
+- NoneSignal() ?
+- Performance benchmarks

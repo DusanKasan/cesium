@@ -10,9 +10,22 @@ import (
 
 type overflowStrategy internal.OverflowStrategy
 
+// OverflowStrategyBuffer when passed to flux.Create instructs the operator to
+// buffer the emissions the Subscriber can't process.
 const OverflowStrategyBuffer = overflowStrategy(internal.OverflowStrategyBuffer)
+
+// OverflowStrategyDrop when passed to flux.Create instructs the operator to
+// discard the emissions the Subscriber can't process.
 const OverflowStrategyDrop = overflowStrategy(internal.OverflowStrategyDrop)
+
+// OverflowStrategyError when passed to flux.Create instructs the operator to
+// emit the cesium.DownstreamUnableToKeepUpError error if the Subscriber
+// can't process the items as fast as they are emitted.
 const OverflowStrategyError = overflowStrategy(internal.OverflowStrategyError)
+
+// OverflowStrategyDrop when passed to flux.Create instructs the operator to
+// ignore backpressure and emit items as fast as possible, effectivelly turning
+// it into an observable.
 const OverflowStrategyIgnore = overflowStrategy(internal.OverflowStrategyIgnore)
 
 // Just creates new cesium.Flux that emits the supplied items and completes.
@@ -56,8 +69,8 @@ func Create(f func(cesium.FluxSink), os overflowStrategy) cesium.Flux {
 	return internal.FluxCreate(f, internal.OverflowStrategy(os))
 }
 
-// Programmatically create a cesium.Flux by generating signals one-by-one when
-// they are requested.
+// Generate creates a cesium.Flux programmatically by generating signals
+// one-by-one when they are requested.
 func Generate(f func(cesium.SynchronousSink)) cesium.Flux {
 	return internal.FluxGenerate(f)
 }
@@ -68,7 +81,7 @@ func Defer(f func() cesium.Publisher) cesium.Flux {
 	return internal.FluxDefer(f)
 }
 
-// Empty creates new cesium.Flux that emits no items and completes with error.
+// Error creates new cesium.Flux that emits no items and completes with error.
 func Error(err error) cesium.Flux {
 	return internal.FluxError(err)
 }

@@ -30,7 +30,6 @@ func (m *Mono) DoFinally(fn func()) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -104,7 +103,6 @@ func (m *Mono) DoOnNext(fn func(cesium.T)) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -138,7 +136,6 @@ func (m *Mono) DoOnError(fn func(error)) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -172,7 +169,6 @@ func (m *Mono) DoOnCancel(fn func()) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -206,7 +202,6 @@ func (m *Mono) DoOnSubscribe(fn func(cesium.Subscription)) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -240,7 +235,6 @@ func (m *Mono) DoOnRequest(fn func(int64)) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -276,7 +270,6 @@ func (m *Mono) DoOnTerminate(fn func()) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -310,7 +303,6 @@ func (m *Mono) DoOnSuccess(fn func()) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -335,7 +327,6 @@ func (m *Mono) DoAfterTerminate(fn func()) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -365,7 +356,6 @@ func (m *Mono) ConcatWith(publishers ...cesium.Publisher) cesium.Flux {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -395,7 +385,6 @@ func (m *Mono) FlatMap(fn func(cesium.T) cesium.Mono, scheduler ...cesium.Schedu
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, s)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -420,7 +409,6 @@ func (m *Mono) Handle(fn func(cesium.T, cesium.SynchronousSink)) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -450,7 +438,6 @@ func (m *Mono) FlatMapMany(fn func(cesium.T) cesium.Publisher, scheduler ...cesi
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, s)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -535,7 +522,6 @@ func (m *Mono) OnErrorReturn(fallbackValue cesium.T) cesium.Mono {
 
 		subscription1 := p.Subscribe(subscriber)
 		subscription2 := m.OnSubscribe(p, scheduler)
-		p.OnSubscribe(subscription2)
 
 		sub := &Subscription{
 			CancelFunc: func() {
@@ -621,4 +607,30 @@ func (m *Mono) Dematerialize() cesium.Mono {
 	}
 
 	return &Mono{onPublish}
+}
+
+func (m *Mono) ToChannel() (<-chan cesium.T, <-chan error) {
+	items := make(chan cesium.T)
+	errs := make(chan error)
+
+	var sub cesium.Subscription
+	sub = m.Subscribe(DoObserver(
+		func(t cesium.T) {
+			items <- t
+			sub.Request(1)
+		},
+		func() {
+			close(items)
+			close(errs)
+		},
+		func(e error) {
+			errs <- e
+			close(items)
+			close(errs)
+		},
+	))
+
+	sub.Request(1)
+
+	return items, errs
 }

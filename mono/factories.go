@@ -1,3 +1,6 @@
+// Package mono is a convenience shorthand for creating instances of
+// cesium.Mono. It provides all the factories in a nice package name so their
+// usage is more straightforward in your code.
 package mono
 
 import (
@@ -27,7 +30,7 @@ func Empty() cesium.Mono {
 	return internal.MonoEmpty()
 }
 
-// Empty creates new cesium.Mono that emits no items and completes with error.
+// Error creates new cesium.Mono that emits no items and completes with error.
 func Error(err error) cesium.Mono {
 	return internal.MonoError(err)
 }

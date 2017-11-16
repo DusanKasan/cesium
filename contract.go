@@ -1,5 +1,5 @@
-// Cesium is a general purpose 4th generation non-blocking reactive library
-// that offers efficient demand management (in the form of managing
+// Package cesium is a general purpose 4th generation non-blocking reactive
+// library that offers efficient demand management (in the form of managing
 // "backpressure").  It offers composable asynchronous sequence APIs Flux (for
 // [N] elements) and Mono (for [0|1] elements), extensively implementing the
 // Reactive Extensions specification where possible.
@@ -49,6 +49,8 @@ type Publisher interface {
 	Subscribe(Subscriber) Subscription
 }
 
+// Subscriber is an observer that can manage the rate of emissions of the
+// Publisher it is subscribed to.
 type Subscriber interface {
 	// OnNext is called by a Publisher when a it emits an item T.
 	OnNext(T)
@@ -64,6 +66,8 @@ type Subscriber interface {
 	OnSubscribe(Subscription)
 }
 
+// Subscription is a way to manage the rate of emission of a Publisher for a
+// specific Subscriber.
 type Subscription interface {
 	// Cancel the Subscription, effectively telling the Publisher to stop
 	// emitting on this subscription.
@@ -85,6 +89,7 @@ type Processor interface {
 	Publisher
 }
 
+// Scheduler serves as a means to introduce multi-threading to reactive operators.
 // Observables/Publishers emit on the thread Subscribe was called on, so
 // to introduce multi-threading we execute everything on schedulers. Some
 // operators allow you to pass a specific scheduler, because they can not
@@ -130,6 +135,8 @@ type Flux interface {
 	Concat(Publisher /*<cesium.Publisher>*/) Flux
 	ConcatWith(...Publisher) Flux
 	FlatMap(func(T) Publisher, ...Scheduler) Flux
+	ToSlice() ([]T, error)
+	ToChannel() (<-chan T, <-chan error)
 
 	DoOnSubscribe(func(Subscription)) Flux
 	DoOnRequest(func(int64)) Flux
@@ -167,6 +174,7 @@ type Mono interface {
 	FlatMapMany(fn func(T) Publisher, scheduler ...Scheduler) Flux
 	Handle(func(T, SynchronousSink)) Mono
 	ConcatWith(...Publisher) Flux
+	ToChannel() (<-chan T, <-chan error)
 
 	Filter(func(T) bool) Mono
 
@@ -253,6 +261,7 @@ type MonoSink interface {
 	OnDispose(func())
 }
 
+// SignalType represents a type of a signal emitted by a Publisher.
 type SignalType string
 
 // Represents an onSubscribe signal type in Signal.
@@ -267,7 +276,7 @@ const SignalTypeOnComplete SignalType = "onComplete"
 // Represents an onError signal type in Signal.
 const SignalTypeOnError SignalType = "onError"
 
-// Represents a reactive signal: OnSubscribe, OnNext, OnComplete or OnError.
+// Signal represents a reactive signal: OnSubscribe, OnNext, OnComplete or OnError.
 type Signal interface {
 	// Propagate the signal represented by this Signal to a given Subscriber.
 	Accept(Subscriber)
