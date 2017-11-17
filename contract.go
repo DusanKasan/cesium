@@ -157,6 +157,8 @@ type Flux interface {
 	Take(int64) Flux
 
 	OnErrorReturn(T) Flux
+	OnErrorResume(func(error) bool, Publisher) Flux
+	OnErrorMap(func(error) error) Flux
 
 	BlockFirst() (T, bool, error)
 	BlockFirstTimeout(time.Duration) (T, bool, error)
@@ -193,6 +195,8 @@ type Mono interface {
 	Dematerialize() Mono
 
 	OnErrorReturn(T) Mono
+	OnErrorResume(func(error) bool, Mono) Mono //TODO: May return 2 items if Next -> Error from original???
+	OnErrorMap(func(error) error) Mono
 
 	Block() (T, bool, error)
 	BlockTimeout(time.Duration) (T, bool, error)

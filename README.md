@@ -199,8 +199,8 @@ Operators listed according to [Reactor docs](https://projectcesium.io/docs/core/
 
 - [ ] Timeout
 - [x] OnErrorReturn
-- [ ] OnErrorResume
-- [ ] OnErrorMap
+- [x] OnErrorResume
+- [x] OnErrorMap
 - [ ] Retry
 - [ ] RetryWhen
 - [ ] Flux.OnBackpressureError
